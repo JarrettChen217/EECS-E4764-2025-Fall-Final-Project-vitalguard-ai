@@ -213,3 +213,7 @@ To ensure code quality and the stability of the `main` branch, all team members 
 ## 👥 Team Members
 
 -   **Group 19**
+    -   Daolin Li (Uni: dl3832) [dl3832@columbia.edu](mailto:dl3832@columbia.edu)
+    -   Hao CHEN (Uni: hc3625) [hc3625@columbia.edu](mailto:hc3625@columbia.edu)
+    -   Sripad Karne (Uni: sk5695) [sk5695@columbia.edu](mailto:sk5695@columbia.edu)
+    -   Yizheng TANG (Uni: yt2992) [yt2992@columbia.edu](mailto:yt2992@columbia.edu)

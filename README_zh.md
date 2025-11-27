@@ -80,13 +80,14 @@ pip install mpfshell
 #### 步骤 3: 刷写 MicroPython 固件
 
 1.  **下载固件**: 从 [MicroPython官网](https://micropython.org/download/ESP32_GENERIC/) 下载最新的稳定版 `.bin` 固件。
-2.  **执行刷写**: 在终端中，进入固件文件所在的目录，然后依次执行以下命令。
+2.  **执行刷写**: 在终端中，进入固件文件所在的目录(e.g., `ls /dev/tty.*`)，然后依次执行以下命令。
     ```bash
     # 擦除 ESP32 上的现有固件
-    esptool.py --port <YOUR_PORT_NAME> erase_flash
-    
+    esptool erase_flash
+    ```
+    ```bash
     # 刷写新固件 (将文件名替换为你下载的版本)
-    esptool.py --port <YOUR_PORT_NAME> --baud 460800 write_flash -z 0x1000 ESP32_GENERIC-v1.2x.x.bin
+    esptool --baud 460800 write-flash 0x1000 ESP32_GENERIC-20250809-v1.26.0.bin
     ```
 
 #### 步骤 4: 上传项目代码
@@ -96,19 +97,23 @@ pip install mpfshell
 ```bash
 # 示例命令 (请去掉端口名前的 /dev/)
 # 例如, 如果端口是 /dev/tty.usbserial-1234, 则使用 tty.usbserial-1234
-mpfshell -nc "open <YOUR_PORT_NAME_WITHOUT_/dev/>; cd esp32; mput .*\.py; repl"
+# mpfshell -nc "open <YOUR_PORT_NAME_WITHOUT_/dev/>; cd esp32; mput .*\.py; repl"
+```
+
+```bash
+cd esp32
+mpfshell -nc "open tty.usbserial-59690942381; mput main.py"
 ```
 
 #### 步骤 5: 查看 ESP32 输出 (调试)
 
-你可以使用 `screen` 命令来查看 ESP32 的 `print` 输出。
+你可以使用 `tio` 命令来查看 ESP32 的 `print` 输出。
 
 ```bash
 # 连接到 ESP32 (115200是波特率)
-screen /dev/<YOUR_PORT_NAME> 115200
-
+tio /dev/tty.usbserial-59690942381
 # 按下 ESP32 上的 "RST" 或 "EN" 按钮重启，即可看到输出
-# 如何退出 screen: 按下 Ctrl + A, 然后按 k, 再按 y
+# 如何退出 tio: 按下 Ctrl + T 然后再按 Q 即可退出。
 ```
 
 ---
@@ -213,3 +218,7 @@ screen /dev/<YOUR_PORT_NAME> 115200
 ## 👥 团队成员 (Team)
 
 -   **Group 19**
+    -   Daolin Li (Uni: dl3832) [dl3832@columbia.edu](mailto:dl3832@columbia.edu)
+    -   Hao CHEN (Uni: hc3625) [hc3625@columbia.edu](mailto:hc3625@columbia.edu)
+    -   Sripad Karne (Uni: sk5695) [sk5695@columbia.edu](mailto:sk5695@columbia.edu)
+    -   Yizheng TANG (Uni: yt2992) [yt2992@columbia.edu](mailto:yt2992@columbia.edu)

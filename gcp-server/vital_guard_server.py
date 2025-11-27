@@ -1,6 +1,6 @@
 # vital_guard_server.py
-# VitalGuard AI 健康监测系统 - GCP服务器端
-# 功能：接收ESP32多传感器数据、实时处理、LLM健康分析
+# VitalGuard AI Health Monitoring System - GCP Server Side
+# Function: Receive ESP32 multi-sensor data, process in real-time, LLM health analysis.
 
 import os
 import json
@@ -25,14 +25,14 @@ TIMEOUT_SEC = 45
 RETRY = 2
 
 # --- Data Processing Configuration ---
-WINDOW_POINTS = 300  # 窗口大小：300个数据点用于心率计算 (约6秒@20ms采样)
-PREDICTION_INTERVAL_SEC = 30  # LLM分析间隔：每30秒生成一次健康报告
-MAX_DATA_BUFFER_SIZE = 1500  # 最大缓冲：1500个数据点 (约30秒数据)
+WINDOW_POINTS = 300  # Window size: 300 data points for heart rate calculation (approximately 6 seconds @ 20ms sampling).
+PREDICTION_INTERVAL_SEC = 30  # LLM analysis interval: Generate a health report every 30 seconds.
+MAX_DATA_BUFFER_SIZE = 1500  # Maximum buffer: 1500 data points (approximately 30 seconds of data).
 
 # --- Flask Server Configuration ---
 FLASK_HOST = '0.0.0.0'
 FLASK_PORT = 9999
-DATA_FILE = 'vital_signs_data.jsonl'  # 持久化存储文件
+DATA_FILE = 'vital_signs_data.jsonl'  # Persistent storage file.
 
 # --- Device Information ---
 DEVICE_TYPE = "ESP32 VitalGuard"
@@ -42,7 +42,7 @@ SENSOR_LOCATION = "Wrist"
 # ======================= DATA MODELS =======================
 class VitalSignsDataPoint:
     """
-    单个周期的生命体征数据点模型
+    single data point of vital signs measurement
     Represents a single cycle of vital signs measurement
     """
 
@@ -56,19 +56,18 @@ class VitalSignsDataPoint:
                  force: float):
         self.cycle = cycle
         self.timestamp = timestamp
-        # PPG数据
+        # PPG data
         self.ir = ir
         self.red = red
-        # 环境数据
+        # environmental data
         self.temperature = temperature
         self.humidity = humidity
-        # 力学数据
+        # force sensor data
         self.force = force
-        # 服务器接收时间
+        # server reception timestamp
         self.server_timestamp = datetime.now().isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
-        """转换为字典格式"""
         return {
             'cycle': self.cycle,
             'timestamp': self.timestamp,
@@ -86,33 +85,31 @@ class VitalSignsDataPoint:
 # ======================= SHARED DATA STORE (ENHANCED) =======================
 class SharedDataStore:
     """
-    线程安全的多传感器数据存储
-    支持批量写入、时序查询、数据聚合
+    thread-safe storage for multi-sensor data points
+    supports batch writes, time-series queries, data aggregation
     """
 
     def __init__(self, max_size: int, persist_file: Optional[str] = None):
         self.max_size = max_size
         self.persist_file = persist_file
 
-        # 使用deque实现高效的FIFO缓冲
         self.data_buffer: Deque[VitalSignsDataPoint] = deque(maxlen=max_size)
         self.lock = threading.Lock()
 
-        # 统计信息
         self.total_received = 0
         self.total_batches = 0
 
         print(f"✅ SharedDataStore initialized: max_size={max_size}")
 
-        # 创建持久化文件
+        # create persistence file if not exists
         if self.persist_file and not os.path.exists(self.persist_file):
             open(self.persist_file, 'w').close()
             print(f"📁 Created persistence file: {self.persist_file}")
 
     def add_batch(self, data_points: List[VitalSignsDataPoint]) -> int:
         """
-        批量添加数据点（线程安全）
-        Returns: 成功添加的数据点数量
+        Batch Add Data Points (Thread-Safe)
+        Returns: Number of data points successfully added.
         """
         added_count = 0
 
@@ -124,7 +121,7 @@ class SharedDataStore:
             self.total_received += added_count
             self.total_batches += 1
 
-        # 异步持久化（避免阻塞）
+        # Asynchronous persistence (to avoid blocking).
         if self.persist_file and added_count > 0:
             threading.Thread(
                 target=self._persist_batch,
@@ -135,7 +132,7 @@ class SharedDataStore:
         return added_count
 
     def _persist_batch(self, data_points: List[VitalSignsDataPoint]) -> None:
-        """后台线程：批量持久化数据"""
+        """Background thread: batch persistence of data."""
         try:
             with open(self.persist_file, 'a') as f:
                 for point in data_points:
@@ -145,7 +142,7 @@ class SharedDataStore:
 
     def get_recent_data(self, count: int) -> Optional[Dict[str, np.ndarray]]:
         """
-        获取最近的N个数据点，按传感器类型组织
+        get the most recent 'count' data points from the buffer, return in structured format
 
         Returns:
             {
@@ -156,7 +153,7 @@ class SharedDataStore:
                 'force': np.array([...]),
                 'timestamps': [...]
             }
-            如果数据不足则返回None
+            if insufficient data, returns None
         """
         with self.lock:
             buffer_size = len(self.data_buffer)
@@ -165,10 +162,10 @@ class SharedDataStore:
                 print(f"⚠️  Insufficient data: requested {count}, available {buffer_size}")
                 return None
 
-            # 获取最近的count个数据点
+            # return the most recent 'count' items
             recent_items = list(self.data_buffer)[-count:]
 
-            # 按传感器类型组织数据
+            # construct structured arrays
             return {
                 'ir': np.array([item.ir for item in recent_items]),
                 'red': np.array([item.red for item in recent_items]),
@@ -180,8 +177,7 @@ class SharedDataStore:
 
     def get_ppg_window(self, window_size: int = 300) -> Optional[Dict[str, np.ndarray]]:
         """
-        获取用于心率计算的PPG数据窗口
-        专门用于信号处理算法
+        Obtain the PPG data window used for heart rate calculation, specifically for signal processing algorithms.
         """
         data = self.get_recent_data(window_size)
         if data is None:
@@ -194,7 +190,7 @@ class SharedDataStore:
         }
 
     def get_buffer_info(self) -> Dict[str, Any]:
-        """获取缓冲区状态信息"""
+        """Get buffer status information."""
         with self.lock:
             current_size = len(self.data_buffer)
             return {
@@ -208,33 +204,33 @@ class SharedDataStore:
 
 # ======================= DATA VALIDATION =======================
 class DataValidator:
-    """数据包验证器：确保接收的数据格式正确"""
+    """Packet Validator: Ensures the received data format is correct."""
 
     @staticmethod
     def validate_batch_request(data: Dict[str, Any]) -> tuple[bool, Optional[str]]:
         """
-        验证批量数据请求格式
+        Verify batch data request format.
         Returns: (is_valid, error_message)
         """
-        # 必需字段检查
+        # Required field check.
         required_fields = ['device_id', 'batch_info', 'data']
         for field in required_fields:
             if field not in data:
                 return False, f"Missing required field: {field}"
 
-        # batch_info验证
+        # batch_info validation
         batch_info = data['batch_info']
         required_batch_fields = ['start_cycle', 'end_cycle', 'total_points']
         for field in required_batch_fields:
             if field not in batch_info:
                 return False, f"Missing batch_info field: {field}"
 
-        # 数据数组验证
+        # data array validation
         data_array = data['data']
         if not isinstance(data_array, list) or len(data_array) == 0:
             return False, "Data array is empty or not a list"
 
-        # 验证第一个数据点的结构（采样验证）
+        # Validate the first data point structure
         first_point = data_array[0]
         required_data_fields = ['cycle', 'timestamp', 'vital_signs']
         for field in required_data_fields:
@@ -254,7 +250,7 @@ class DataValidator:
 
 # ======================= LLM INTERFACE (UNCHANGED) =======================
 class LLMInterface(ABC):
-    """LLM客户端抽象基类"""
+    """LLM client abstract base class."""
 
     @abstractmethod
     def predict(self, prompt: str) -> str:
@@ -340,8 +336,8 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
     @app.route('/api/vitals', methods=['POST'])
     def receive_vital_signs():
         """
-        接收来自ESP32的生命体征数据
-        支持批量数据传输（推荐）和单点传输（兼容）
+        Receiving vital signs data from ESP32
+        Supports bulk data transmission (recommended) and single-point transmission (compatible).
         """
         try:
             request_data = request.get_json()
@@ -355,7 +351,7 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                     }
                 }), 400
 
-            # ===== 批量数据处理 (Recommended) =====
+            # ===== Batch Data Processing (Recommended). =====
             if 'data' in request_data and 'batch_info' in request_data:
                 # 验证数据格式
                 is_valid, error_msg = DataValidator.validate_batch_request(request_data)
@@ -368,12 +364,12 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                         }
                     }), 400
 
-                # 解析批量数据
+                # Parsing batch data.
                 device_id = request_data['device_id']
                 batch_info = request_data['batch_info']
                 data_points_raw = request_data['data']
 
-                # 转换为VitalSignsDataPoint对象
+                # Convert to Vital Signs Data Point object.
                 data_points = []
                 parsing_errors = []
 
@@ -395,10 +391,10 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                     except Exception as e:
                         parsing_errors.append(f"Point {idx}: {str(e)}")
 
-                # 批量添加到数据存储
+                # Batch Add to Data Store.
                 added_count = data_store.add_batch(data_points)
 
-                # 返回处理结果
+                # Return the processing result.
                 response = {
                     "success": True,
                     "message": f"Batch processed successfully",
@@ -412,14 +408,14 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                 }
 
                 if parsing_errors:
-                    response["warnings"] = parsing_errors[:10]  # 只返回前10个错误
+                    response["warnings"] = parsing_errors[:10]  # Only return the first 10 errors.
 
                 print(f"📦 Batch received: {added_count} points from {device_id}")
                 return jsonify(response), 201
 
-            # ===== 单点数据处理 (Backward Compatibility) =====
+            # ===== Backward Compatibility =====
             else:
-                # 检查必需字段
+                # Check required fields.
                 required = ['cycle', 'timestamp', 'ppg', 'temperature']
                 if not all(k in request_data for k in required):
                     return jsonify({
@@ -463,7 +459,7 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
 
     @app.route('/api/buffer', methods=['GET'])
     def get_buffer_status():
-        """获取数据缓冲区状态"""
+        """Get data buffer status."""
         try:
             buffer_info = data_store.get_buffer_info()
             return jsonify({
@@ -478,7 +474,7 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
 
     @app.route('/api/recent', methods=['GET'])
     def get_recent_data():
-        """获取最近的数据点（用于调试和可视化）"""
+        """Get the most recent data points (for debugging and visualization)."""
         try:
             limit = request.args.get('limit', default=50, type=int)
             limit = min(limit, 500)  # 最多返回500个点
@@ -492,7 +488,7 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                     "available": data_store.get_buffer_info()['current_size']
                 }), 404
 
-            # 格式化返回数据
+            # Format returned data.
             response_data = {
                 "success": True,
                 "count": limit,
@@ -518,7 +514,7 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
 
     @app.route('/health', methods=['GET'])
     def health_check():
-        """健康检查端点（用于负载均衡器）"""
+        """Health check endpoint."""
         return jsonify({
             "status": "healthy",
             "timestamp": datetime.now().isoformat(),
@@ -530,25 +526,25 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
 
 # ======================= MAIN APPLICATION =======================
 def main():
-    """主程序入口"""
+    """Main program entry point."""
     print("=" * 70)
     print("  🩺 VitalGuard AI - Health Monitoring System")
     print("  📡 Real-time Vital Signs Processing Server")
     print("=" * 70)
     print()
 
-    # 初始化数据存储
+    # Initialize data storage.
     print("🔧 Initializing data store...")
     data_store = SharedDataStore(
         max_size=MAX_DATA_BUFFER_SIZE,
         persist_file=DATA_FILE
     )
 
-    # 创建Flask应用
+    # Create a Flask application.
     print("🔧 Creating Flask server...")
     app = create_flask_app(data_store)
 
-    # 启动服务器
+    # Start the server.
     print(f"🚀 Starting server on {FLASK_HOST}:{FLASK_PORT}...")
     print(f"📊 Buffer capacity: {MAX_DATA_BUFFER_SIZE} data points")
     print(f"💾 Data persistence: {DATA_FILE}")

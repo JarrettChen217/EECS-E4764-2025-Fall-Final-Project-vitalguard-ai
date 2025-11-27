@@ -118,84 +118,358 @@ tio /dev/tty.usbserial-59690942381
 
 ---
 
-### **第二部分: GCP 后端服务设置**
+### **Part 2: GCP Backend Service Setup**
 
-此部分指导如何在 GCP 的 Ubuntu 服务器上部署 Flask 应用。
+本节说明如何在 GCP Ubuntu 服务器上部署和运行 VitalGuard 的 Flask 后端服务。分为两种使用方式：
 
-#### 阶段 A: 本地开发与测试
+- **本地开发 / 调试模式**：手动运行 Python 进程，便于调试
+- **生产 / 持久化部署模式**：通过 `systemd + gunicorn` 实现 24/7 持久运行
 
-在部署到云端前，建议先在本地运行测试。
+> 说明：以下命令默认在 GCP 实例上，以用户 `hc3625` 登录。如果你使用的是其他用户名，请将路径中的 `hc3625` 替换为你的用户名。
 
-1.  **进入项目目录**: `cd gcp-server/`
-2.  **创建并激活虚拟环境**:
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-3.  **安装依赖**: `pip install -r requirements.txt`
-4.  **运行本地服务器**: `flask run`
+---
 
-#### 阶段 B: 在 GCP 上使用 Systemd 进行持久化部署
+#### Phase A: Local Development & Testing
 
-为了让我们的服务能在服务器上 24/7 稳定运行，并且在服务器重启后能自动启动，我们使用 `systemd`。
+用于本地调试、快速验证 API、查看错误栈等。
 
-1.  **创建 `systemd` 服务文件**:
-    通过 SSH 连接到你的 GCP 服务器，然后执行以下命令创建一个服务配置文件。
-    ```bash
-    sudo nano /etc/systemd/system/vitalguard.service
-    ```
-2.  **粘贴配置内容**:
-    将以下内容粘贴到文件中。**请务必修改 `User` 和路径相关的字段**，使其与你的服务器配置匹配。
-    ```ini
-    [Unit]
-    Description=VitalGuard AI Flask Server
-    After=network.target
-    
-    [Service]
-    User=<your_username>  # 例如: hc3625
-    Group=<your_username> # 例如: hc3625
-    WorkingDirectory=<path_to_project>/gcp-server  # 例如: /home/hc3625/vitalguard-ai/gcp-server
-    
-    # 指定虚拟环境的路径
-    Environment="PATH=<path_to_project>/gcp-server/venv/bin" 
-    
-    # 启动命令
-    ExecStart=<path_to_project>/gcp-server/venv/bin/gunicorn --workers 3 --bind unix:app.sock -m 007 wsgi:app
-    
-    # 异常重启策略
-    Restart=always
-    RestartSec=3
-    
-    [Install]
-    WantedBy=multi-user.target
-    ```
-    > **注意**: 为提高性能和稳定性，生产环境推荐使用 `gunicorn`。请先在虚拟环境中 `pip install gunicorn`，并创建一个 `wsgi.py` 文件，内容为: `from main import app as application`。
+1. **SSH 登录到 GCP 实例**
 
-3.  **管理服务**:
-    现在，你可以使用 `systemctl` 命令来管理你的服务了。
-    ```bash
-    # 重新加载 systemd 配置，让新服务文件生效
-    sudo systemctl daemon-reload
-    
-    # 启动你的服务
-    sudo systemctl start vitalguard
-    
-    # 查看服务状态，检查是否有错误
-    sudo systemctl status vitalguard
-    
-    # 将服务设置为开机自启动
-    sudo systemctl enable vitalguard
-    ```
+   ```bash
+   # 示例（以 gcloud 为例）可以使用网页Console工具登录
+   gcloud compute ssh instance-2 --zone=<your-zone>
+   ```
 
-4.  **查看日志**:
-    如果服务运行出错或你想查看请求日志，请使用 `journalctl`。
-    ```bash
-    # 查看服务的实时日志
-    sudo journalctl -u vitalguard -f
+2. **进入项目后端目录**
+
+   ```bash
+   cd /home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+   ```
+
+3. **激活虚拟环境**
+
+   我们统一使用已创建好的虚拟环境：`/home/hc3625/esp32_env`
+
+   ```bash
+   source /home/hc3625/esp32_env/bin/activate
+   ```
+
+4. **安装依赖（首次或依赖有更新时执行）**
     
-    # 查看最近的100行日志
-    sudo journalctl -u vitalguard -n 100
-    ```
+    `EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server/requirements.txt` 中列出了所有依赖包。
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+5. **本地运行后端服务器（开发模式）**
+
+   推荐两种等价方式（二选一）：
+
+   - 方式 A：直接运行主程序入口
+     ```bash
+     python main.py
+     ```
+     或（如果在 `vital_guard_server.py` 中也写了 `if __name__ == "__main__":`）
+     ```bash
+     python vital_guard_server.py
+     ```
+
+   - 方式 B：如果你只想跑 Flask 内置服务器（仅调试用）
+     ```bash
+     export FLASK_APP=vital_guard_server:app
+     flask run --host=0.0.0.0 --port=9999
+     ```
+
+6. **验证服务是否正常运行**
+
+   在服务器上或本地通过端口转发，访问健康检查接口：
+
+   ```bash
+   curl http://localhost:9999/health
+   ```
+
+   预期返回类似 JSON：
+
+   ```json
+   {
+     "status": "healthy",
+     "timestamp": "2025-11-27T06:20:00.123456",
+     "service": "VitalGuard AI"
+   }
+   ```
+
+---
+
+#### Phase B: Persistent Deployment on GCP with systemd + gunicorn
+
+这一部分是“真正用于上线跑 ESP32 数据”的生产部署方式。特点：
+
+- 服务器开机自动启动
+- 进程崩溃自动重启
+- 支持多 worker 并发处理请求
+- 日志可通过 `journalctl` 和独立 log 文件查看
+
+> 仅需在 **GCP 实例上执行一次完整配置**，之后只需用 `systemctl` 管理服务即可。
+
+---
+
+##### B1. 确认目录和虚拟环境
+
+1. **后端项目目录**
+
+   ```bash
+   /home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+   ```
+
+2. **虚拟环境**
+
+   ```bash
+   /home/hc3625/esp32_env
+   ```
+
+   激活方法：
+
+   ```bash
+   source /home/hc3625/esp32_env/bin/activate
+   ```
+
+3. **安装 gunicorn（若尚未安装）**
+
+   ```bash
+   source /home/hc3625/esp32_env/bin/activate
+   pip install gunicorn
+   ```
+
+4. **创建日志目录（若尚未创建）**
+
+   ```bash
+   mkdir -p /home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server/logs
+   ```
+
+---
+
+##### B2. 创建 systemd 服务文件
+
+我们使用一个专门的服务单元：`vitalguard-api.service`，用于运行后端 API 服务器。
+
+1. **创建 / 编辑服务文件**
+
+   ```bash
+   sudo nano /etc/systemd/system/vitalguard-api.service
+   ```
+
+2. **目前使用以下配置**
+
+   ```ini
+   [Unit]
+   Description=VitalGuard AI Health Monitoring API Service
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+
+   # 运行该服务的用户与用户组（当前为 hc3625）
+   User=hc3625
+   Group=hc3625
+
+   # 后端代码所在目录
+   WorkingDirectory=/home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+
+   # 基本环境变量
+   Environment="PATH=/home/hc3625/esp32_env/bin:/usr/local/bin:/usr/bin:/bin"
+   Environment="PYTHONUNBUFFERED=1"
+
+   # 使用 Gunicorn 启动 Flask 应用
+   # vital_guard_server:app  =>  模块名:Flask应用对象名
+   ExecStart=/home/hc3625/esp32_env/bin/gunicorn \
+       --bind 0.0.0.0:9999 \
+       --workers 4 \
+       --threads 2 \
+       --timeout 120 \
+       --worker-class sync \
+       --access-logfile /home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server/logs/access.log \
+       --error-logfile /home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server/logs/error.log \
+       --log-level info \
+       vital_guard_server:app
+
+   # 自动重启策略
+   Restart=always
+   RestartSec=10
+   StartLimitInterval=200
+   StartLimitBurst=5
+
+   # 安全相关（可选）
+   NoNewPrivileges=true
+   PrivateTmp=true
+
+   # 系统资源限制（根据需要调整）
+   LimitNOFILE=65535
+   LimitNPROC=4096
+
+   # 日志输出到 systemd journal
+   StandardOutput=journal
+   StandardError=journal
+   SyslogIdentifier=vitalguard-api
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+> 如果你在其他机器或其他用户名下部署：
+> - 把 `User=hc3625` 和 `Group=hc3625` 改成你自己的用户名和组名
+> - 把所有 `/home/hc3625/...` 路径中的 `hc3625` 替换为你的用户名
+
+---
+
+##### B3. 让 systemd 识别并启动服务
+
+1. **重新加载 systemd 配置**
+
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+2. **启动服务**
+
+   ```bash
+   sudo systemctl start vitalguard-api.service
+   ```
+
+3. **设置开机自启**
+
+   ```bash
+   sudo systemctl enable vitalguard-api.service
+   ```
+
+4. **检查服务状态**
+
+   ```bash
+   sudo systemctl status vitalguard-api.service
+   ```
+
+   正常情况下，你会看到类似输出：
+
+   ```text
+   ● vitalguard-api.service - VitalGuard AI Health Monitoring API Service
+        Loaded: loaded (/etc/systemd/system/vitalguard-api.service; enabled)
+        Active: active (running) since ...
+      Main PID: 12345 (gunicorn)
+        Tasks: 5 (limit: ...)
+       Memory: ...
+       CGroup: /system.slice/vitalguard-api.service
+               ├─12345 /home/hc3625/esp32_env/bin/python3 /home/hc3625/esp32_env/bin/gunicorn ...
+               ├─12346 gunicorn: worker [vital_guard_server:app]
+               └─...
+   ```
+
+---
+
+##### B4. 验证后端 API 是否正常对外服务
+
+1. **在 GCP 实例上测试**
+
+   ```bash
+   curl http://localhost:9999/health
+   ```
+
+2. **在本地电脑上测试（将 `<SERVER_IP>` 换成你的 GCP 公网 IP）**
+
+   ```bash
+   curl http://<SERVER_IP>:9999/health
+   ```
+
+   预期返回 JSON：
+
+   ```json
+   {
+     "status": "healthy",
+     "timestamp": "...",
+     "service": "VitalGuard AI"
+   }
+   ```
+
+ESP32 端代码中，后端接收数据的地址应设置为：
+
+```text
+http://<SERVER_IP>:9999/api/vitals
+```
+
+---
+
+##### B5. 日志查看与调试
+
+你有两种查看日志的途径：`systemd journal` 和 Gunicorn 的独立日志文件。
+
+1. **使用 `journalctl` 查看实时日志**
+
+   ```bash
+   # 实时查看（Ctrl + C 退出）
+   sudo journalctl -u vitalguard-api.service -f
+
+   # 查看最近 100 行日志
+   sudo journalctl -u vitalguard-api.service -n 100
+   ```
+
+2. **查看 Gunicorn 独立日志文件**
+
+   ```bash
+   cd /home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+
+   # 访问日志（每次请求一行）
+   tail -f logs/access.log
+
+   # 错误日志（异常、traceback 等）
+   tail -f logs/error.log
+   ```
+
+---
+
+##### B6. 常用运维命令速查表
+
+```bash
+# 进入后端项目目录
+cd /home/hc3625/github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+
+# 激活虚拟环境（调试时手动跑用得到）
+source /home/hc3625/esp32_env/bin/activate
+
+# ========== systemd 服务管理 ==========
+# 启动服务
+sudo systemctl start vitalguard-api.service
+
+# 停止服务
+sudo systemctl stop vitalguard-api.service
+
+# 重启服务（修改代码后一般用这个）
+sudo systemctl restart vitalguard-api.service
+
+# 查看服务状态
+sudo systemctl status vitalguard-api.service
+
+# 设置开机自启（只需执行一次）
+sudo systemctl enable vitalguard-api.service
+
+# ========== 日志 ==========
+# 实时查看 systemd 日志
+sudo journalctl -u vitalguard-api.service -f
+
+# 查看最近 100 行日志
+sudo journalctl -u vitalguard-api.service -n 100
+
+# 查看 Gunicorn 访问日志
+tail -f logs/access.log
+
+# 查看 Gunicorn 错误日志
+tail -f logs/error.log
+
+# ========== 本地手动调试运行（非 systemd 模式） ==========
+# 手动运行 Flask 后端（开发模式）
+python main.py
+
+# 或者直接用 gunicorn 手动试跑
+gunicorn --bind 0.0.0.0:9999 vital_guard_server:app
+```
 
 ## 📈 开发流程 (Team Workflow)
 

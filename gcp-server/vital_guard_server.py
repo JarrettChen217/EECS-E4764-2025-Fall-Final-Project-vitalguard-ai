@@ -525,8 +525,11 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
 
 
 # ======================= MAIN APPLICATION =======================
-def main():
-    """Main program entry point."""
+def initialize_application():
+    """
+    Initialize the application (data store and Flask app).
+    This function is called both in development mode and by Gunicorn.
+    """
     print("=" * 70)
     print("  🩺 VitalGuard AI - Health Monitoring System")
     print("  📡 Real-time Vital Signs Processing Server")
@@ -544,20 +547,38 @@ def main():
     print("🔧 Creating Flask server...")
     app = create_flask_app(data_store)
 
-    # Start the server.
-    print(f"🚀 Starting server on {FLASK_HOST}:{FLASK_PORT}...")
     print(f"📊 Buffer capacity: {MAX_DATA_BUFFER_SIZE} data points")
     print(f"💾 Data persistence: {DATA_FILE}")
-    print()
     print("=" * 70)
-    print("✅ Server is ready to receive data from ESP32")
-    print("🔗 Send POST requests to: http://your-server-ip:9999/api/vitals")
+    print("✅ Application initialized successfully")
     print("=" * 70)
-    print("\nPress Ctrl+C to stop the server\n")
 
+    return app
+
+
+# ======================= MODULE-LEVEL APP (for Gunicorn) =======================
+# Gunicorn will import this app object
+app = initialize_application()
+
+
+# ======================= DEVELOPMENT MODE ENTRY POINT =======================
+def main():
+    """
+    Development mode entry point.
+    Used when running: python main.py
+    """
+    print(f"\n🚀 Starting server on {FLASK_HOST}:{FLASK_PORT}...")
+    print(f"🔗 Send POST requests to: http://{FLASK_HOST}:{FLASK_PORT}/api/vitals")
+    print("\nPress Ctrl+C to stop the server\n")
     try:
+        # Use Flask built-in server for development
         app.run(host=FLASK_HOST, port=FLASK_PORT, debug=False, threaded=True)
     except KeyboardInterrupt:
         print("\n⚠️  Received shutdown signal")
     finally:
         print("👋 Server stopped. Goodbye!")
+
+
+# ======================= DIRECT EXECUTION =======================
+if __name__ == "__main__":
+    main()

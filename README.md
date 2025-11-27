@@ -115,83 +115,363 @@ screen /dev/<YOUR_PORT_NAME> 115200
 
 ### **Part 2: GCP Backend Service Setup**
 
-This section covers deploying the Flask application on a GCP Ubuntu server.
+This section explains how to deploy and run the VitalGuard Flask backend on a GCP Ubuntu server. There are two ways to use it:
+
+- **Local development / debug mode**: run the Python process manually for debugging
+- **Production / persistent deployment mode**: use `systemd + gunicorn` to keep it running 24/7
+
+> Note: All commands assume you are logged into the GCP instance as user `hc3625`.
+> If you use a different username, replace `hc3625` in all paths with your own username.
+
+---
 
 #### Phase A: Local Development & Testing
 
-Before deploying to the cloud, it's recommended to run the server locally.
+Use this mode for local debugging, quick API verification, and viewing error stack traces.
 
-1.  **Navigate to the directory**: `cd gcp-server/`
-2.  **Create and activate a virtual environment**:
-    ```bash
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
-3.  **Install dependencies**: `pip install -r requirements.txt`
-4.  **Run the local server**: `flask run`
+1. **SSH into the GCP instance**
 
-#### Phase B: Persistent Deployment on GCP with Systemd
+   ```bash
+   # Example (using gcloud), could use web console to SSH in.
+   gcloud compute ssh instance-2 --zone=<your-zone>
+   ```
 
-We use `systemd` to ensure our service runs 24/7 and starts automatically on boot.
+2. **Go to the backend project directory**
 
-1.  **Create a `systemd` Service File**:
-    SSH into your GCP server and run the following command to create a service configuration file.
-    ```bash
-    sudo nano /etc/systemd/system/vitalguard.service
-    ```
-2.  **Paste the Configuration**:
-    Paste the following content into the file. **Be sure to modify the `User` and path fields** to match your server's configuration.
-    ```ini
-    [Unit]
-    Description=VitalGuard AI Flask Server
-    After=network.target
-    
-    [Service]
-    User=<your_username>  # e.g., hc3625
-    Group=<your_username> # e.g., hc3625
-    WorkingDirectory=<path_to_project>/gcp-server  # e.g., /home/hc3625/vitalguard-ai/gcp-server
-    
-    # Specify the path to the virtual environment
-    Environment="PATH=<path_to_project>/gcp-server/venv/bin" 
-    
-    # Command to start the app using Gunicorn
-    ExecStart=<path_to_project>/gcp-server/venv/bin/gunicorn --workers 3 --bind 0.0.0.0:5000 wsgi:app
-    
-    # Restart policy
-    Restart=always
-    RestartSec=3
-    
-    [Install]
-    WantedBy=multi-user.target
-    ```
-    > **Note**: For production, `gunicorn` is recommended for better performance and stability. Install it via `pip install gunicorn` in your virtual environment and create a `wsgi.py` file with the content: `from main import app as application`.
+   ```bash
+   cd EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+   ```
 
-3.  **Manage the Service**:
-    You can now manage your service using `systemctl`.
-    ```bash
-    # Reload the systemd daemon to recognize the new service
-    sudo systemctl daemon-reload
-    
-    # Start your service
-    sudo systemctl start vitalguard
-    
-    # Check the service status for any errors
-    sudo systemctl status vitalguard
-    
-    # Enable the service to start on boot
-    sudo systemctl enable vitalguard
-    ```
+3. **Activate the virtual environment**
 
-4.  **Viewing Logs**:
-    Use `journalctl` to view logs if the service fails or to monitor requests.
-    ```bash
-    # View real-time logs for the service
-    sudo journalctl -u vitalguard -f
-    
-    # View the last 100 log entries
-    sudo journalctl -u vitalguard -n 100
-    ```
+   We use a shared virtual environment: `/.../esp32_env`
 
+   ```bash
+   # this path may vary based on your setup
+   source /.../esp32_env/bin/activate
+   ```
+
+4. **Install dependencies** (run the first time or when dependencies change)
+
+   ```bash
+   # file locates in `gcp-server/requirements.txt`
+   pip install -r requirements.txt
+   ```
+
+5. **Run the backend server locally (development mode)**
+
+   There are two equivalent options (choose one):
+
+   - Option A: run the main entry script directly
+     ```bash
+     python main.py
+     ```
+     Or (if you also added `if __name__ == "__main__":` in `vital_guard_server.py`)
+     ```bash
+     python vital_guard_server.py
+     ```
+
+   - Option B: run the built-in Flask development server only (for debugging)
+     ```bash
+     export FLASK_APP=vital_guard_server:app
+     flask run --host=0.0.0.0 --port=9999
+     ```
+
+6. **Verify that the service is running correctly**
+
+   On the server (or locally via port forwarding), call the health check endpoint:
+
+   ```bash
+   curl http://localhost:9999/health
+   ```
+
+   Expected JSON response:
+
+   ```json
+   {
+     "status": "healthy",
+     "timestamp": "2025-11-27T06:20:00.123456",
+     "service": "VitalGuard AI"
+   }
+   ```
+
+---
+
+#### Phase B: Persistent Deployment on GCP with systemd + gunicorn
+
+This part describes the production deployment used for real ESP32 data. Key characteristics:
+
+- Starts automatically when the server boots
+- Automatically restarts if the process crashes
+- Supports multiple workers to handle concurrent requests
+- Logs are available via `journalctl` and separate log files
+
+> You only need to perform the full setup **once** on the GCP instance.
+> After that, you manage the service with `systemctl`.
+
+---
+
+##### B1. Confirm directories and virtual environment
+
+1. **Backend project directory**
+
+   ```bash
+   /.../github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+   ```
+
+2. **Virtual environment**
+
+   ```bash
+   /.../esp32_env
+   ```
+
+   To activate:
+
+   ```bash
+   source /.../esp32_env/bin/activate
+   ```
+
+3. **Install gunicorn (if not already installed)**
+
+   ```bash
+   # Activate the virtual environment (may vary based on your setup)
+   source /.../esp32_env/bin/activate
+   pip install gunicorn
+   ```
+
+4. **Create the logs directory (if it does not exist)**
+
+   ```bash
+   mkdir -p EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server/logs
+   ```
+
+---
+
+##### B2. Create the systemd service file
+
+We use a dedicated service unit, `vitalguard-api.service`, to run the backend API server.
+
+1. **Access the service file**
+
+   ```bash
+   sudo nano /etc/systemd/system/vitalguard-api.service
+   ```
+
+2. **Current configuration**
+
+   ```ini
+   [Unit]
+   Description=VitalGuard AI Health Monitoring API Service
+   After=network-online.target
+   Wants=network-online.target
+
+   [Service]
+   Type=simple
+
+   # User and group that run this service (currently hc3625)
+   User=hc3625
+   Group=hc3625
+
+   # Backend code directory
+   WorkingDirectory=/.../github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+
+   # Basic environment variables
+   Environment="PATH=/.../esp32_env/bin:/usr/local/bin:/usr/bin:/bin"
+   Environment="PYTHONUNBUFFERED=1"
+
+   # Start the Flask app with Gunicorn
+   # vital_guard_server:app  =>  module_name:flask_app_object_name
+   ExecStart=/.../esp32_env/bin/gunicorn \
+       --bind 0.0.0.0:9999 \
+       --workers 4 \
+       --threads 2 \
+       --timeout 120 \
+       --worker-class sync \
+       --access-logfile /.../github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server/logs/access.log \
+       --error-logfile /.../github_repo/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server/logs/error.log \
+       --log-level info \
+       vital_guard_server:app
+
+   # Automatic restart policy
+   Restart=always
+   RestartSec=10
+   StartLimitInterval=200
+   StartLimitBurst=5
+
+   # Security-related options (optional)
+   NoNewPrivileges=true
+   PrivateTmp=true
+
+   # System resource limits (adjust if needed)
+   LimitNOFILE=65535
+   LimitNPROC=4096
+
+   # Log output to the systemd journal
+   StandardOutput=journal
+   StandardError=journal
+   SyslogIdentifier=vitalguard-api
+
+   [Install]
+   WantedBy=multi-user.target
+   ```
+
+> If you deploy on another machine or under a different username:
+> - Change `User=hc3625` and `Group=hc3625` to your own user and group
+> - Replace `hc3625` in all `/.../...` paths with your own username
+
+---
+
+##### B3. Make systemd load and start the service
+
+1. **Reload systemd configuration**
+
+   ```bash
+   sudo systemctl daemon-reload
+   ```
+
+2. **Start the service**
+
+   ```bash
+   sudo systemctl start vitalguard-api.service
+   ```
+
+3. **Enable auto-start on boot**
+
+   ```bash
+   sudo systemctl enable vitalguard-api.service
+   ```
+
+4. **Check service status**
+
+   ```bash
+   sudo systemctl status vitalguard-api.service
+   ```
+
+   If everything is working, you should see output similar to:
+
+   ```text
+   ● vitalguard-api.service - VitalGuard AI Health Monitoring API Service
+        Loaded: loaded (/etc/systemd/system/vitalguard-api.service; enabled)
+        Active: active (running) since ...
+      Main PID: 12345 (gunicorn)
+        Tasks: 5 (limit: ...)
+       Memory: ...
+       CGroup: /system.slice/vitalguard-api.service
+               ├─12345 /.../esp32_env/bin/python3 /.../esp32_env/bin/gunicorn ...
+               ├─12346 gunicorn: worker [vital_guard_server:app]
+               └─...
+   ```
+
+---
+
+##### B4. Verify that the backend API is accessible
+
+1. **Test on the GCP instance**
+
+   ```bash
+   curl http://localhost:9999/health
+   ```
+
+2. **Test from your local machine** (replace `<SERVER_IP>` with your GCP public IP)
+
+   ```bash
+   curl http://<SERVER_IP>:9999/health
+   # e.g, curl http://136.113.226.196:9999/health this for our project server (instance-2)
+   ```
+
+   Expected JSON response:
+
+   ```json
+   {
+     "status": "healthy",
+     "timestamp": "...",
+     "service": "VitalGuard AI"
+   }
+   ```
+
+In the ESP32 code, set the backend data endpoint to:
+
+```text
+http://<SERVER_IP>:9999/api/vitals
+```
+
+---
+
+##### B5. Log viewing and debugging
+
+There are two ways to view logs: via the `systemd` journal and via Gunicorn log files.
+
+1. **Use `journalctl` to view logs**
+
+   ```bash
+   # Live logs (Ctrl + C to exit)
+   sudo journalctl -u vitalguard-api.service -f
+
+   # View the last 100 log lines
+   sudo journalctl -u vitalguard-api.service -n 100
+   ```
+
+2. **View Gunicorn log files**
+
+   ```bash
+   cd /.../EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+
+   # Access log (one line per request)
+   tail -f logs/access.log
+
+   # Error log (exceptions, tracebacks, etc.)
+   tail -f logs/error.log
+   ```
+
+---
+
+##### B6. Common operations cheat sheet
+
+```bash
+# Go to the backend project directory
+cd /.../EECS-E4764-2025-Fall-Final-Project-vitalguard-ai/gcp-server
+
+# Activate the virtual environment (used when running things manually)
+source /.../esp32_env/bin/activate
+
+# ========== systemd service management ==========
+# Start the service
+sudo systemctl start vitalguard-api.service
+
+# Stop the service
+sudo systemctl stop vitalguard-api.service
+
+# Restart the service (use this after code changes)
+sudo systemctl restart vitalguard-api.service
+
+# Check service status
+sudo systemctl status vitalguard-api.service
+
+# Enable auto-start on boot (only needs to be done once)
+sudo systemctl enable vitalguard-api.service
+
+# ========== Logs ==========
+# View live systemd logs
+sudo journalctl -u vitalguard-api.service -f
+
+# View the last 100 log lines
+sudo journalctl -u vitalguard-api.service -n 100
+
+# View Gunicorn access log
+tail -f logs/access.log
+
+# View Gunicorn error log
+tail -f logs/error.log
+
+# ========== Local manual run (non-systemd mode) ==========
+# Run the Flask backend manually (development mode)
+python main.py
+
+# Or test-run it manually with gunicorn
+gunicorn --bind 0.0.0.0:9999 vital_guard_server:app
+```
+
+---
 ## 📈 Development Workflow
 
 To ensure code quality and the stability of the `main` branch, all team members must follow this workflow:

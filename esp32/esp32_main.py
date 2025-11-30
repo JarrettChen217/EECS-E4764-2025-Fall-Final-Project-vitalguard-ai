@@ -75,17 +75,27 @@ class HDC1080:
     def __init__(self, i2c):
         self.i2c = i2c
 
-    def read_temp_raw(self):    # Read raw temperature value (16-bit)
+    def _read_temp_raw(self):    # Read raw temperature value (16-bit)
         self.i2c.writeto(HDC1080_ADDR, b'\x00')
         time.sleep_ms(15)
         d = self.i2c.readfrom(HDC1080_ADDR, 2)
         return (d[0] << 8) | d[1]
 
-    def read_humi_raw(self):    # Read raw humidity value (16-bit)
+    def _read_humi_raw(self):    # Read raw humidity value (16-bit)
         self.i2c.writeto(HDC1080_ADDR, b'\x01')
         time.sleep_ms(15)
         d = self.i2c.readfrom(HDC1080_ADDR, 2)
         return (d[0] << 8) | d[1]
+
+    def read_temp_c(self):
+        raw = self._read_temp_raw()
+        temp_c = (raw / 65536.0) * 165.0 - 40.0
+        return temp_c
+
+    def read_humi_rh(self):
+        raw = self._read_humi_raw()
+        humidity = (raw / 65536.0) * 100.0
+        return humidity
 
 
 ##################################################
@@ -182,15 +192,124 @@ sensor_hdc = HDC1080(i2c)
 tca_select(i2c, 2)
 sensor_acc = ADXL345(i2c)
 
+##################################################
+# 7.5 NETWORK & BATCH CONFIG
+##################################################
+
+# WiFi Configuration
+WIFI_SSID = "Columbia University"
+WIFI_PASS = ""  # Fill password if needed
+
+def connect_wifi():
+    """Connect ESP32 to WiFi."""
+    wlan = network.WLAN(network.STA_IF)
+    wlan.active(True)
+    if not wlan.isconnected():
+        wlan.connect(WIFI_SSID, WIFI_PASS)
+        while not wlan.isconnected():
+            time.sleep(0.5)
+    print("WiFi Connected:", wlan.ifconfig())
+
+connect_wifi()
+time.sleep(1)
+
+# Server Configuration
+SERVER_IP = "136.113.226.196"
+SERVER_PORT = 9999
+DEVICE_ID = "esp32_001"  # Modify as needed
+
+BASE_URL = "http://%s:%d" % (SERVER_IP, SERVER_PORT)
+VITALS_API_URL = BASE_URL + "/api/vitals"
+
+# Batch configuration
+BATCH_SIZE = 20  # <<< adjustable batch size
+
+
+class VitalBatchSender:
+    """
+    Handles buffering of vital sign data points and sending them to server in batches.
+    """
+
+    def __init__(self, device_id, url, batch_size):
+        self.device_id = device_id
+        self.url = url
+        self.batch_size = batch_size
+        self.buffer = []
+
+    def add_point(self, point):
+        """
+        Add a data point and send batch when buffer is full.
+        """
+        self.buffer.append(point)
+
+        if len(self.buffer) >= self.batch_size:
+            self._send_buffer()
+
+    def _send_buffer(self):
+        """
+        Send buffered data as one batch to the server.
+        """
+        if not self.buffer:
+            return
+
+        start_cycle = self.buffer[0]["cycle"]
+        end_cycle = self.buffer[-1]["cycle"]
+        total_points = len(self.buffer)
+
+        payload = {
+            "device_id": self.device_id,
+            "batch_info": {
+                "start_cycle": start_cycle,
+                "end_cycle": end_cycle,
+                "total_points": total_points
+            },
+            "data": self.buffer
+        }
+
+        try:
+            resp = urequests.post(self.url, json=payload, timeout=5)
+            print("Batch sent. Status:", resp.status_code)
+            resp.close()
+
+            # Clear buffer only if request did not raise exception
+            self.buffer = []
+
+        except Exception as e:
+            # Log error; keep buffer so we might retry later
+            print("ERROR: Failed to send batch:", e)
+            # NOTE: You could add retry logic or buffer size limit here to avoid OOM.
+
+class CycleCounter:
+    """
+    Monotonic cycle counter with wrap-around at a configurable maximum value.
+    """
+
+    def __init__(self, max_value=1000000000):
+        self.max_value = max_value
+        self.value = 0
+
+    def next(self):
+        """
+        Increment counter and return the next cycle value.
+        Wraps back to 1 after reaching max_value.
+        """
+        self.value += 1
+        if self.value > self.max_value:
+            self.value = 1
+        return self.value
+
 
 ##################################################
 # 8. CONTINUOUS STREAMING MODE
-# Continuously send sensor JSON packets to computer
 ##################################################
 
 print("Start continuous streaming")
 
 last_send = time.ticks_ms()
+
+batch_sender = VitalBatchSender(DEVICE_ID, VITALS_API_URL, BATCH_SIZE)
+
+cycle_counter = CycleCounter()
 
 while True:
 
@@ -200,8 +319,8 @@ while True:
 
     # HDC1080 — CH1
     tca_select(i2c, 1)
-    t_raw = sensor_hdc.read_temp_raw()
-    h_raw = sensor_hdc.read_humi_raw()
+    temp_c = sensor_hdc.read_temp_c()
+    humidity = sensor_hdc.read_humi_rh()
 
     # ADXL345 — CH2
     tca_select(i2c, 2)
@@ -210,18 +329,37 @@ while True:
     # FSR402 (ADC)
     fsr_raw = read_fsr()
 
-    # Send every 200ms
-    if time.ticks_diff(time.ticks_ms(), last_send) > 200:
+    # Sample every 200ms
+    now_ms = time.ticks_ms()
+    if time.ticks_diff(now_ms, last_send) > 200:
+        last_send = now_ms
 
-        packet = {
-            "MAX30102_CH0": { "ir": ir, "red": red },
-            "HDC1080_CH1": { "temp_raw": t_raw, "humi_raw": h_raw },
-            "ADXL345_CH2": { "ax": ax, "ay": ay, "az": az },
-            "FSR402_ADC25": fsr_raw,
-            "timestamp_ms": time.ticks_ms()
+        force_value = fsr_raw
+
+        cycle = cycle_counter.next()
+
+        data_point = {
+            "cycle": cycle,
+            "timestamp": now_ms,
+            "vital_signs": {
+                "ppg": {
+                    "ir": ir,
+                    "red": red
+                },
+                "temperature": temp_c,
+                "humidity": humidity,
+                "force": force_value,
+                "accel": {
+                    "ax": ax,
+                    "ay": ay,
+                    "az": az
+                }
+            }
         }
 
-        print(ujson.dumps(packet))
-        last_send = time.ticks_ms()
+        # Debug if needed
+        # print(ujson.dumps(data_point))
+
+        batch_sender.add_point(data_point)
 
     time.sleep_ms(5)

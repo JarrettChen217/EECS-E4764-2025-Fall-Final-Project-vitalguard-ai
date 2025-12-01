@@ -11,7 +11,7 @@ VCC → 3.3V
 GND → GND
 
 2. Heart-rate Sensor (Using TCA9548A Channel 0)
-INT → A0 (GPIO25) (optional, interrupt pin)
+INT → A0 (GPIO32) (optional, interrupt pin)
 SDA →SD0
 SCL → SC0
 VIN → 3.3V
@@ -157,10 +157,10 @@ class ADXL345:
 ##################################################
 # 5. FSR402 (Analog pressure sensor)
 #    压力传感器（模拟输入）
-#    Pressure sensor via ADC (GPIO25)
+#    Pressure sensor via ADC (GPIO32)
 ##################################################
 
-fsr_pin = ADC(Pin(25))
+fsr_pin = ADC(Pin(32))
 fsr_pin.atten(ADC.ATTN_11DB)      # enable 0–3.3V
 fsr_pin.width(ADC.WIDTH_12BIT)    # 12-bit precision
 
@@ -267,7 +267,7 @@ class VitalBatchSender:
         }
 
         try:
-            resp = urequests.post(self.url, json=payload, timeout=5)
+            resp = urequests.post(self.url, json=payload, timeout=10)
             print("Batch sent. Status:", resp.status_code)
             resp.close()
 

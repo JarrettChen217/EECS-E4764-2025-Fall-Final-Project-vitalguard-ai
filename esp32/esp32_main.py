@@ -167,10 +167,15 @@ class MAX30102:
         self.red_window = []          # Downsampled RED samples
         self._downsample_counter = 0  # Counter for integer decimation
 
+        # --- SpO2 estimation state ---
+        self._last_spo2 = None       # Last smoothed SpO2 value
+        self._spo2_alpha = 0.3       # EMA smoothing factor (0..1)
+
         # --- Basic configuration and sanity check ---
         self._check_part_id()
         self._configure_sensor()
         self._clear_fifo_pointers()
+
 
     # -------------------------------------------------------------------------
     #  Low-level I2C helpers
@@ -423,6 +428,115 @@ class MAX30102:
         hr_bpm = 60.0 / rr_mean
         return hr_bpm
 
+    def estimate_spo2_simple(self):
+        """
+        SpO2 estimation using ratio-of-ratios on RED/IR windows, with
+        basic signal-quality checks and simple exponential smoothing.
+
+        Returns:
+            Smoothed SpO2 percentage (float) or None if data is unreliable.
+        """
+        red_buffer = self.red_window
+        ir_buffer = self.ir_window
+
+        # -------------------------------
+        # 0) Check minimal data length
+        # -------------------------------
+        try:
+            min_seconds = max(4.0, MIN_WINDOW_SECONDS)  # Prefer at least ~4s for SpO2
+            min_samples = int(SAMPLE_RATE_HZ * min_seconds)
+        except NameError:
+            # Fallback if constants are not defined
+            min_samples = 80  # e.g., ~3–4s at 20–30 Hz effective rate
+
+        n = min(len(red_buffer), len(ir_buffer))
+        if n < min_samples:
+            return None
+
+        # Use up to MAX_SAMPLES most recent data if defined, otherwise use all
+        try:
+            window_len = min(n, MAX_SAMPLES)
+        except NameError:
+            window_len = n
+
+        red_data = red_buffer[-window_len:]
+        ir_data = ir_buffer[-window_len:]
+
+        if not red_data or not ir_data:
+            return None
+
+        # -------------------------------
+        # 1) DC components (mean values)
+        # -------------------------------
+        red_dc = sum(red_data) / len(red_data)
+        ir_dc = sum(ir_data) / len(ir_data)
+
+        # DC level sanity checks
+        # Threshold values are heuristic and may need tuning for your hardware.
+        if red_dc < 5000 or ir_dc < 5000:
+            # Very low DC suggests poor contact or no finger
+            return None
+
+        # -------------------------------
+        # 2) AC components (peak-to-peak)
+        # -------------------------------
+        red_ac_signal = [x - red_dc for x in red_data]
+        ir_ac_signal = [x - ir_dc for x in ir_data]
+
+        red_ac = max(red_ac_signal) - min(red_ac_signal)
+        ir_ac = max(ir_ac_signal) - min(ir_ac_signal)
+
+        # AC must be clearly above noise; thresholds are rough heuristics.
+        if red_ac <= 0 or ir_ac <= 0:
+            return None
+
+        # Perfusion index-like checks: AC/DC should not be too small
+        red_ratio = red_ac / red_dc
+        ir_ratio = ir_ac / ir_dc
+
+        # For typical finger PPG, these ratios are small (e.g., ~0.01–0.1).
+        # If both are extremely small, likely no usable pulsatile signal.
+        if red_ratio < 0.001 and ir_ratio < 0.001:
+            return None
+
+        # -------------------------------
+        # 3) Ratio-of-ratios R
+        # -------------------------------
+        if red_ratio <= 0 or ir_ratio <= 0:
+            return None
+
+        R = red_ratio / ir_ratio
+
+        # Plausibility check for R
+        # Typical physiological R roughly between ~0.3 and 1.5
+        if R < 0.2 or R > 3.0:
+            return None
+
+        # -------------------------------
+        # 4) Raw SpO2 estimation
+        # -------------------------------
+        # NOTE: This is a generic empirical formula; for medical-grade
+        # accuracy, a device-specific calibration curve is required.
+        raw_spo2 = 110.0 - 25.0 * R
+
+        # Clamp to plausible range
+        if raw_spo2 < 70.0:
+            raw_spo2 = 70.0
+        elif raw_spo2 > 100.0:
+            raw_spo2 = 100.0
+
+        # -------------------------------
+        # 5) Simple exponential smoothing
+        # -------------------------------
+        if self._last_spo2 is None:
+            smoothed_spo2 = raw_spo2
+        else:
+            alpha = self._spo2_alpha
+            smoothed_spo2 = (1.0 - alpha) * self._last_spo2 + alpha * raw_spo2
+
+        self._last_spo2 = smoothed_spo2
+        return smoothed_spo2
+
 
 ##################################################
 # 4. DRIVER: ADXL345 (3-axis accelerometer)
@@ -614,7 +728,7 @@ while True:
     tca_select(i2c, 0)
     red, ir = sensor_ppg.get_latest_pair()
     heartrate = sensor_ppg.estimate_hr_simple()
-    # spo2 = sensor_ppg.estimate_spo2_simple(...)
+    spo2 = sensor_ppg.estimate_spo2_simple()
 
     # HDC1080 — CH1
     tca_select(i2c, 1)
@@ -642,10 +756,10 @@ while True:
             "timestamp": now_ms,
             "vital_signs": {
                 "ppg": {
-                    "ir": ir,
-                    "red": red,
-                    "heartrate": heartrate,
-                    "spo2": None  # SpO2 estimation not implemented
+                    "ir": 0 if ir is None else ir,
+                    "red": 0 if red is None else red,
+                    "heartrate": 0 if heartrate is None else heartrate,
+                    "spo2": 0 if spo2 is None else spo2
                 },
                 "temperature": temp_c,
                 "humidity": humidity,

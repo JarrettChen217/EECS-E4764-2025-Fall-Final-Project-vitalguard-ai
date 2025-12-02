@@ -48,6 +48,11 @@ import ustruct
 import network
 import urequests
 
+# --- Constants for estimation ---
+
+SAMPLE_RATE_HZ = 10            # actual effective sampling rate
+SLEEP_MS = 1000 // SAMPLE_RATE_HZ
+
 ##################################################
 # 1. TCA9548A MULTIPLEXER
 #    TCA9548A I2C 多路选择器，用于切换多个 I2C 通道
@@ -104,27 +109,319 @@ class HDC1080:
 #    Photoplethysmography (PPG) sensor
 ##################################################
 
-MAX_ADDR = 0x57
+# MAX30102 I2C address
+MAX30102_ADDR = 0x57
+
+# --- Algorithm related constants ---
+WINDOW_SECONDS = 8             # Length of HR analysis window (seconds)
+MIN_WINDOW_SECONDS = 4         # HR estimation minimal data length (seconds)
+MAX_SAMPLES = SAMPLE_RATE_HZ * WINDOW_SECONDS
+
+# The actual internal sample rate of MAX30102 (set by register 0x0A)
+SENSOR_SAMPLE_RATE_HZ = 100
+
+# Simple integer downsampling factor. Avoid overwhelming the ESP32. TODO: try different rates
+DOWNSAMPLE_FACTOR = SENSOR_SAMPLE_RATE_HZ // SAMPLE_RATE_HZ
+
+# Register addresses (MAX30102)
+REG_INTR_STATUS_1 = 0x00
+REG_INTR_STATUS_2 = 0x01
+REG_INTR_ENABLE_1 = 0x02
+REG_INTR_ENABLE_2 = 0x03
+
+REG_FIFO_WR_PTR   = 0x04
+REG_OVF_COUNTER   = 0x05
+REG_FIFO_RD_PTR   = 0x06
+REG_FIFO_DATA     = 0x07
+REG_FIFO_CONFIG   = 0x08
+
+REG_MODE_CONFIG   = 0x09
+REG_SPO2_CONFIG   = 0x0A
+
+REG_LED1_PA       = 0x0C   # RED LED pulse amplitude
+REG_LED2_PA       = 0x0D   # IR LED pulse amplitude
+
+REG_TEMP_INT      = 0x1F
+REG_TEMP_FRAC     = 0x20
+
+REG_PART_ID       = 0xFF   # Should be 0x15 for MAX30102
+
 
 class MAX30102:
+    """
+    MAX30102 driver with:
+      - FIFO-based reading
+      - Internal downsampled window buffer
+      - Simple heart-rate estimation from IR channel
+
+    Public methods:
+      - get_latest_pair()  -> (red, ir) or (None, None)
+      - estimate_hr_simple() -> hr_bpm (float) or None
+    """
+
     def __init__(self, i2c):
         self.i2c = i2c
 
-        # Configure sensor registers
-        self.i2c.writeto_mem(MAX_ADDR, 0x09, bytes([0x40]))  # Rest
-        time.sleep_ms(10)
+        # --- Internal buffers for downsampled data (for HR / SpO2 estimation) ---
+        self.ir_window = []           # Downsampled IR samples
+        self.red_window = []          # Downsampled RED samples
+        self._downsample_counter = 0  # Counter for integer decimation
 
-        self.i2c.writeto_mem(MAX_ADDR, 0x08, bytes([0x4F]))  # FIFO config
-        self.i2c.writeto_mem(MAX_ADDR, 0x09, bytes([0x03]))  # SpO2 mode
-        self.i2c.writeto_mem(MAX_ADDR, 0x0A, bytes([0x2F]))  # 400Hz sample rate
-        self.i2c.writeto_mem(MAX_ADDR, 0x0C, bytes([0x80]))  # LED RED
-        self.i2c.writeto_mem(MAX_ADDR, 0x0D, bytes([0x80]))  # LED IR
+        # --- Basic configuration and sanity check ---
+        self._check_part_id()
+        self._configure_sensor()
+        self._clear_fifo_pointers()
 
-    def read_sample(self):
-        data = self.i2c.readfrom_mem(MAX_ADDR, 0x07, 6)
-        red = ((data[0]<<16)|(data[1]<<8)|data[2]) & 0x3FFFF
-        ir  = ((data[3]<<16)|(data[4]<<8)|data[5]) & 0x3FFFF
-        return red, ir
+    # -------------------------------------------------------------------------
+    #  Low-level I2C helpers
+    # -------------------------------------------------------------------------
+    def _read_reg(self, reg, n_bytes=1):
+        """Read 1 or more bytes from a register."""
+        data = self.i2c.readfrom_mem(MAX30102_ADDR, reg, n_bytes)
+        if n_bytes == 1:
+            return data[0]
+        return data
+
+    def _write_reg(self, reg, value):
+        """Write 1 byte to a register."""
+        self.i2c.writeto_mem(MAX30102_ADDR, reg, bytes([value & 0xFF]))
+
+    # -------------------------------------------------------------------------
+    #  Sensor configuration
+    # -------------------------------------------------------------------------
+    def _check_part_id(self):
+        """Verify that a MAX30102 is present on the bus."""
+        try:
+            part_id = self._read_reg(REG_PART_ID)
+        except OSError:
+            raise Exception("MAX30102 not responding on I2C bus")
+
+        if part_id != 0x15:
+            raise Exception("Unexpected PART_ID for MAX30102: 0x%02X" % part_id)
+
+    def _configure_sensor(self):
+        """Reset and configure MAX30102 for SpO2 mode with ~100Hz sample rate."""
+        # Soft reset
+        self._write_reg(REG_MODE_CONFIG, 0x40)  # Reset bit
+        time.sleep_ms(50)
+
+        # FIFO configuration:
+        #  - Sample average = 4
+        #  - FIFO rollover disabled
+        #  - FIFO almost full = 15 (unused here, but common default)
+        # 0b0100_1111 = 0x4F
+        self._write_reg(REG_FIFO_CONFIG, 0x4F)
+
+        # SpO2 mode: RED + IR
+        self._write_reg(REG_MODE_CONFIG, 0x03)
+
+        # SpO2 configuration:
+        #  - SPO2_ADC_RGE = 01 (4096 nA full scale)
+        #  - SPO2_SR      = 0001 (100 samples per second)
+        #  - LED_PW       = 11 (411 us, 18-bit resolution)
+        # 0b0100_0111 = 0x27
+        self._write_reg(REG_SPO2_CONFIG, 0x27)
+
+        # LED pulse amplitudes (~7 mA, a safe starting point; adjust as needed)
+        self._write_reg(REG_LED1_PA, 0x24)  # Red LED
+        self._write_reg(REG_LED2_PA, 0x24)  # IR LED
+
+    def _clear_fifo_pointers(self):
+        """Reset FIFO read/write/overflow pointers."""
+        self._write_reg(REG_FIFO_WR_PTR, 0x00)
+        self._write_reg(REG_OVF_COUNTER, 0x00)
+        self._write_reg(REG_FIFO_RD_PTR, 0x00)
+
+        # Clear any pending interrupts
+        _ = self._read_reg(REG_INTR_STATUS_1)
+        _ = self._read_reg(REG_INTR_STATUS_2)
+
+    # -------------------------------------------------------------------------
+    #  FIFO reading and window management
+    # -------------------------------------------------------------------------
+    def _read_fifo_samples(self):
+        """
+        Read all available samples from FIFO.
+
+        :return: list of (red, ir) tuples (raw 18-bit values); may be empty.
+        """
+        # Clear interrupt status registers (required pattern)
+        _ = self._read_reg(REG_INTR_STATUS_1)
+        _ = self._read_reg(REG_INTR_STATUS_2)
+
+        # Read FIFO read/write pointers
+        read_ptr = self._read_reg(REG_FIFO_RD_PTR)
+        write_ptr = self._read_reg(REG_FIFO_WR_PTR)
+
+        # Compute number of samples currently in FIFO (depth = 32 samples)
+        num_samples = write_ptr - read_ptr
+        if num_samples < 0:
+            num_samples += 32
+
+        if num_samples <= 0:
+            return []
+
+        # Each sample is 6 bytes: 3 bytes RED + 3 bytes IR
+        bytes_to_read = num_samples * 6
+        raw = self._read_reg(REG_FIFO_DATA, bytes_to_read)
+
+        samples = []
+        for i in range(num_samples):
+            base = i * 6
+
+            # Extract 18-bit RED (left-justified)
+            red = ((raw[base] << 16) |
+                   (raw[base + 1] << 8) |
+                   raw[base + 2]) & 0x03FFFF
+
+            # Extract 18-bit IR
+            ir = ((raw[base + 3] << 16) |
+                  (raw[base + 4] << 8) |
+                  raw[base + 5]) & 0x03FFFF
+
+            samples.append((red, ir))
+
+        return samples
+
+    def _update_window_from_sensor(self):
+        """
+        Read all available FIFO samples, downsample them, and update the
+        internal RED/IR sliding windows.
+        """
+        samples = self._read_fifo_samples()
+        if not samples:
+            return
+
+        for red, ir in samples:
+            # Integer decimation: keep one sample every DOWNSAMPLE_FACTOR
+            self._downsample_counter += 1
+            if self._downsample_counter < DOWNSAMPLE_FACTOR:
+                continue
+            self._downsample_counter = 0
+
+            self.red_window.append(red)
+            self.ir_window.append(ir)
+
+            # Limit window length to MAX_SAMPLES
+            if len(self.ir_window) > MAX_SAMPLES:
+                # For small windows (e.g., 80 samples), pop(0) cost is acceptable
+                self.ir_window.pop(0)
+                self.red_window.pop(0)
+
+    # -------------------------------------------------------------------------
+    #  Public data access
+    # -------------------------------------------------------------------------
+    def get_latest_pair(self):
+        """
+        Update internal window from FIFO and return the latest (red, ir) pair.
+
+        :return: (red, ir) tuple or (None, None) if no data yet.
+        """
+        # First, pull in all pending samples from sensor
+        self._update_window_from_sensor()
+
+        if not self.ir_window:
+            return None, None
+
+        # Keep API simple: always return (red, ir)
+        return self.red_window[-1], self.ir_window[-1]
+
+    # -------------------------------------------------------------------------
+    #  Simple heart rate estimation (from internal IR window)
+    # -------------------------------------------------------------------------
+    @staticmethod
+    def _moving_average(signal, window):
+        """Simple moving average, padded to original length."""
+        n = len(signal)
+        if window <= 1 or n <= window:
+            return signal[:]
+        out = []
+        s = 0
+        for i in range(window):
+            s += signal[i]
+        out.append(s / window)
+        for i in range(window, n):
+            s += signal[i] - signal[i - window]
+            out.append(s / window)
+        pad_len = window - 1
+        return [out[0]] * pad_len + out
+
+    def estimate_hr_simple(self):
+        """
+        Estimate heart rate (BPM) from the internal IR window.
+
+        Uses:
+          - SAMPLE_RATE_HZ as effective sampling rate on the window
+          - MIN_WINDOW_SECONDS and WINDOW_SECONDS for data length checks
+
+        :return: heart rate in BPM (float) or None if not enough / unreliable
+        """
+        ir_buffer = self.ir_window
+        n = len(ir_buffer)
+
+        # Require at least MIN_WINDOW_SECONDS worth of data
+        min_samples = int(SAMPLE_RATE_HZ * MIN_WINDOW_SECONDS)
+        if n < min_samples:
+            return None
+
+        # Use only last WINDOW_SECONDS of data
+        if n > MAX_SAMPLES:
+            data = ir_buffer[-MAX_SAMPLES:]
+        else:
+            data = ir_buffer[:]
+
+        if not data:
+            return None
+
+        # 1) Remove DC component
+        mean_val = sum(data) / len(data)
+        ac = [x - mean_val for x in data]
+
+        # 2) Smooth with a small moving average window
+        smoothed = MAX30102._moving_average(ac, 5)
+
+        # 3) Peak detection
+        max_val = max(smoothed)
+        if max_val <= 0:
+            return None
+
+        threshold = 0.3 * max_val  # 30% of peak amplitude
+        # Minimal distance between peaks (in samples), assuming max HR ~200 bpm
+        min_distance = int(0.3 * SAMPLE_RATE_HZ)  # 0.3 s
+
+        peaks = []
+        last_peak = -min_distance
+
+        # Simple local maxima detection
+        for i in range(1, len(smoothed) - 1):
+            if (smoothed[i] > threshold and
+                smoothed[i] > smoothed[i - 1] and
+                smoothed[i] > smoothed[i + 1]):
+                if i - last_peak >= min_distance:
+                    peaks.append(i)
+                    last_peak = i
+
+        if len(peaks) < 2:
+            return None
+
+        # 4) Compute RR intervals and HR
+        intervals = []
+        for i in range(1, len(peaks)):
+            dt_samples = peaks[i] - peaks[i - 1]
+            if dt_samples <= 0:
+                continue
+            rr = dt_samples / float(SAMPLE_RATE_HZ)
+            intervals.append(rr)
+
+        if not intervals:
+            return None
+
+        rr_mean = sum(intervals) / len(intervals)
+        if rr_mean <= 0:
+            return None
+
+        hr_bpm = 60.0 / rr_mean
+        return hr_bpm
 
 
 ##################################################
@@ -315,7 +612,9 @@ while True:
 
     # MAX30102 — CH0
     tca_select(i2c, 0)
-    red, ir = sensor_ppg.read_sample()
+    red, ir = sensor_ppg.get_latest_pair()
+    heartrate = sensor_ppg.estimate_hr_simple()
+    # spo2 = sensor_ppg.estimate_spo2_simple(...)
 
     # HDC1080 — CH1
     tca_select(i2c, 1)
@@ -331,7 +630,7 @@ while True:
 
     # Sample every 200ms
     now_ms = time.ticks_ms()
-    if time.ticks_diff(now_ms, last_send) > 200:
+    if time.ticks_diff(now_ms, last_send) > SLEEP_MS:
         last_send = now_ms
 
         force_value = fsr_raw
@@ -344,7 +643,9 @@ while True:
             "vital_signs": {
                 "ppg": {
                     "ir": ir,
-                    "red": red
+                    "red": red,
+                    "heartrate": heartrate,
+                    "spo2": None  # SpO2 estimation not implemented
                 },
                 "temperature": temp_c,
                 "humidity": humidity,

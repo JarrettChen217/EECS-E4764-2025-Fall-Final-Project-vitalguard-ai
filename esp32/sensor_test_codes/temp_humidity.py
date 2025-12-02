@@ -10,9 +10,24 @@ CONFIG_REG = 0x02
 TEMP_REG = 0x00
 HUMID_REG = 0x01
 
+##################################################
+# 1. TCA9548A MULTIPLEXER
+#    TCA9548A I2C 多路选择器，用于切换多个 I2C 通道
+#    This multiplexer selects one of 8 I2C channels.
+##################################################
+
+TCA_ADDR = 0x70
+
+def tca_select(i2c, channel):   # we can use channel 0-7
+    if channel > 7:
+        return
+    i2c.writeto(TCA_ADDR, bytes([1 << channel]))
+    time.sleep_ms(5)  # Required settling time
+
 # --- Initialize I2C bus ---
 i2c = I2C(0, scl=Pin(20), sda=Pin(22), freq=400000)
 
+tca_select(i2c, 1)
 
 def configure_sensor():
     """

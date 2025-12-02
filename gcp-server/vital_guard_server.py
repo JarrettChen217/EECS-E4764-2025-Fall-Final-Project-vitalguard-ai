@@ -42,8 +42,8 @@ SENSOR_LOCATION = "Wrist"
 # ======================= DATA MODELS =======================
 class VitalSignsDataPoint:
     """
-    single data point of vital signs measurement
-    Represents a single cycle of vital signs measurement
+    Single data point of vital signs measurement.
+    Represents a single cycle of vital signs measurement.
     """
 
     def __init__(self,
@@ -54,22 +54,33 @@ class VitalSignsDataPoint:
                  temperature: float,
                  humidity: float,
                  force: float,
-                 heartrate: Optional[float] = None,
-                 spo2: Optional[float] = None):
+                 heartrate: float,
+                 spo2: float,
+                 ax: float,
+                 ay: float,
+                 az: float):
         self.cycle = cycle
         self.timestamp = timestamp
+
         # PPG data
         self.ir = ir
         self.red = red
-        # vital-sign metrics (calculated roughly at device side)
         self.heartrate = heartrate
         self.spo2 = spo2
-        # environmental data
+
+        # Environmental data
         self.temperature = temperature
         self.humidity = humidity
-        # force sensor data
+
+        # Force sensor data
         self.force = force
-        # server reception timestamp
+
+        # Accelerometer data
+        self.ax = ax
+        self.ay = ay
+        self.az = az
+
+        # Server reception timestamp
         self.server_timestamp = datetime.now().isoformat()
 
     def to_dict(self) -> Dict[str, Any]:
@@ -85,6 +96,11 @@ class VitalSignsDataPoint:
             'temperature': self.temperature,
             'humidity': self.humidity,
             'force': self.force,
+            'accel': {
+                'ax': self.ax,
+                'ay': self.ay,
+                'az': self.az
+            },
             'server_timestamp': self.server_timestamp
         }
 
@@ -149,7 +165,7 @@ class SharedDataStore:
 
     def get_recent_data(self, count: int) -> Optional[Dict[str, np.ndarray]]:
         """
-        get the most recent 'count' data points from the buffer, return in structured format
+        Get the most recent 'count' data points from the buffer, return in structured format.
 
         Returns:
             {
@@ -160,9 +176,12 @@ class SharedDataStore:
                 'temperature': np.array([...]),
                 'humidity': np.array([...]),
                 'force': np.array([...]),
+                'ax': np.array([...]),
+                'ay': np.array([...]),
+                'az': np.array([...]),
                 'timestamps': [...]
             }
-            if insufficient data, returns None
+            If insufficient data, returns None.
         """
         with self.lock:
             buffer_size = len(self.data_buffer)
@@ -183,6 +202,9 @@ class SharedDataStore:
                 'temperature': np.array([item.temperature for item in recent_items]),
                 'humidity': np.array([item.humidity for item in recent_items]),
                 'force': np.array([item.force for item in recent_items]),
+                'ax': np.array([item.ax for item in recent_items]),
+                'ay': np.array([item.ay for item in recent_items]),
+                'az': np.array([item.az for item in recent_items]),
                 'timestamps': [item.timestamp for item in recent_items]
             }
 
@@ -199,6 +221,21 @@ class SharedDataStore:
             'red': data['red'],
             'heartrate': data['heartrate'],
             'spo2': data['spo2'],
+            'timestamps': data['timestamps']
+        }
+
+    def get_motion_window(self, window_size: int = 300) -> Optional[Dict[str, np.ndarray]]:
+        """
+        Obtain accelerometer data window for activity and posture analysis.
+        """
+        data = self.get_recent_data(window_size)
+        if data is None:
+            return None
+
+        return {
+            'ax': data['ax'],
+            'ay': data['ay'],
+            'az': data['az'],
             'timestamps': data['timestamps']
         }
 
@@ -258,12 +295,18 @@ class DataValidator:
         if 'ir' not in ppg or 'red' not in ppg:
             return False, "PPG data must contain 'ir' and 'red'"
 
-        # If they exist, just ensure they are numbers.
         for field in ['heartrate', 'spo2']:
-            if field in ppg:
-                value = ppg[field]
-                if not isinstance(value, (int, float)):
-                    return False, f"Field '{field}' in PPG must be a number if present"
+            if field not in ppg:
+                return False, f"Field '{field}' in PPG is missing"
+
+        # accel validation
+        if 'accel' in vital_signs:
+            accel = vital_signs['accel']
+            if not isinstance(accel, dict):
+                return False, "accel must be an object with ax/ay/az fields"
+            for axis in ['ax', 'ay', 'az']:
+                if axis not in accel:
+                    return False, f"accel missing field: {axis}"
 
         return True, None
 
@@ -373,7 +416,6 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
 
             # ===== Batch Data Processing (Recommended). =====
             if 'data' in request_data and 'batch_info' in request_data:
-                # 验证数据格式
                 is_valid, error_msg = DataValidator.validate_batch_request(request_data)
                 if not is_valid:
                     return jsonify({
@@ -388,24 +430,26 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                 device_id = request_data['device_id']
                 batch_info = request_data['batch_info']
                 data_points_raw = request_data['data']
-
-                # Convert to Vital Signs Data Point object.
-                data_points = []
-                parsing_errors = []
-
+                data_points: List[VitalSignsDataPoint] = []
+                parsing_errors: List[str] = []
                 for idx, point in enumerate(data_points_raw):
                     try:
                         vital_signs = point['vital_signs']
                         ppg = vital_signs['ppg']
-
+                        accel = vital_signs.get('accel', {}) or {}
                         data_point = VitalSignsDataPoint(
                             cycle=point['cycle'],
-                            timestamp=point['timestamp'],
-                            ir=ppg['ir'],
-                            red=ppg['red'],
+                            timestamp=str(point['timestamp']),
+                            ir=ppg.get('ir', 0),
+                            red=ppg.get('red', 0),
                             temperature=vital_signs.get('temperature', 0.0),
                             humidity=vital_signs.get('humidity', 0.0),
-                            force=vital_signs.get('force', 0.0)
+                            force=vital_signs.get('force', 0.0),
+                            heartrate=ppg.get('heartrate'),
+                            spo2=ppg.get('spo2'),
+                            ax=accel.get('ax'),
+                            ay=accel.get('ay'),
+                            az=accel.get('az')
                         )
                         data_points.append(data_point)
                     except Exception as e:
@@ -420,7 +464,7 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                     "message": f"Batch processed successfully",
                     "device_id": device_id,
                     "batch_info": {
-                        "cycles": f"{batch_info['start_cycle']}-{batch_info['end_cycle']}",
+                        "cycles": f"{batch_info.get('start_cycle')}-{batch_info.get('end_cycle')}",
                         "total_received": len(data_points_raw),
                         "successfully_stored": added_count,
                         "parsing_errors": len(parsing_errors)
@@ -428,14 +472,13 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                 }
 
                 if parsing_errors:
-                    response["warnings"] = parsing_errors[:10]  # Only return the first 10 errors.
-
+                    response["warnings"] = parsing_errors[:10]
                 print(f"📦 Batch received: {added_count} points from {device_id}")
                 return jsonify(response), 201
 
             # ===== Backward Compatibility =====
             else:
-                # Check required fields.
+                # Check the required fields.
                 required = ['cycle', 'timestamp', 'ppg', 'temperature']
                 if not all(k in request_data for k in required):
                     return jsonify({
@@ -445,16 +488,21 @@ def create_flask_app(data_store: SharedDataStore) -> Flask:
                             "message": f"Required fields: {required}"
                         }
                     }), 400
-
                 ppg = request_data['ppg']
+                accel = request_data.get('accel', {}) or {}
                 data_point = VitalSignsDataPoint(
                     cycle=request_data['cycle'],
                     timestamp=request_data['timestamp'],
-                    ir=ppg['ir'],
-                    red=ppg['red'],
+                    ir=ppg.get('ir', 0),
+                    red=ppg.get('red', 0),
                     temperature=request_data['temperature'],
                     humidity=request_data.get('humidity', 0.0),
-                    force=request_data.get('force', 0.0)
+                    force=request_data.get('force', 0.0),
+                    heartrate=ppg.get('heartrate'),
+                    spo2=ppg.get('spo2'),
+                    ax=accel.get('ax'),
+                    ay=accel.get('ay'),
+                    az=accel.get('az')
                 )
 
                 data_store.add_batch([data_point])

@@ -53,12 +53,17 @@ class VitalSignsDataPoint:
                  red: int,
                  temperature: float,
                  humidity: float,
-                 force: float):
+                 force: float,
+                 heartrate: Optional[float] = None,
+                 spo2: Optional[float] = None):
         self.cycle = cycle
         self.timestamp = timestamp
         # PPG data
         self.ir = ir
         self.red = red
+        # vital-sign metrics (calculated roughly at device side)
+        self.heartrate = heartrate
+        self.spo2 = spo2
         # environmental data
         self.temperature = temperature
         self.humidity = humidity
@@ -73,7 +78,9 @@ class VitalSignsDataPoint:
             'timestamp': self.timestamp,
             'ppg': {
                 'ir': self.ir,
-                'red': self.red
+                'red': self.red,
+                'heartrate': self.heartrate,
+                'spo2': self.spo2
             },
             'temperature': self.temperature,
             'humidity': self.humidity,
@@ -148,6 +155,8 @@ class SharedDataStore:
             {
                 'ir': np.array([...]),
                 'red': np.array([...]),
+                'heartrate': np.array([...]),
+                'spo2': np.array([...]),
                 'temperature': np.array([...]),
                 'humidity': np.array([...]),
                 'force': np.array([...]),
@@ -169,6 +178,8 @@ class SharedDataStore:
             return {
                 'ir': np.array([item.ir for item in recent_items]),
                 'red': np.array([item.red for item in recent_items]),
+                'heartrate': np.array([item.heartrate for item in recent_items]),
+                'spo2': np.array([item.spo2 for item in recent_items]),
                 'temperature': np.array([item.temperature for item in recent_items]),
                 'humidity': np.array([item.humidity for item in recent_items]),
                 'force': np.array([item.force for item in recent_items]),
@@ -186,6 +197,8 @@ class SharedDataStore:
         return {
             'ir': data['ir'],
             'red': data['red'],
+            'heartrate': data['heartrate'],
+            'spo2': data['spo2'],
             'timestamps': data['timestamps']
         }
 
@@ -244,6 +257,13 @@ class DataValidator:
         ppg = vital_signs['ppg']
         if 'ir' not in ppg or 'red' not in ppg:
             return False, "PPG data must contain 'ir' and 'red'"
+
+        # If they exist, just ensure they are numbers.
+        for field in ['heartrate', 'spo2']:
+            if field in ppg:
+                value = ppg[field]
+                if not isinstance(value, (int, float)):
+                    return False, f"Field '{field}' in PPG must be a number if present"
 
         return True, None
 

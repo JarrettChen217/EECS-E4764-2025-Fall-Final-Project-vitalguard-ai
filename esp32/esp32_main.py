@@ -47,6 +47,7 @@ import ujson
 import ustruct
 import network
 import urequests
+import gc
 
 # --- Constants for estimation ---
 
@@ -206,30 +207,35 @@ class MAX30102:
 
     def _configure_sensor(self):
         """Reset and configure MAX30102 for SpO2 mode with ~100Hz sample rate."""
-        # Soft reset
+        # 1. Soft reset
         self._write_reg(REG_MODE_CONFIG, 0x40)  # Reset bit
-        time.sleep_ms(50)
+        time.sleep_ms(10)
 
-        # FIFO configuration:
-        #  - Sample average = 4
-        #  - FIFO rollover disabled
-        #  - FIFO almost full = 15 (unused here, but common default)
-        # 0b0100_1111 = 0x4F
+        # 2. Wait until reset bit is cleared
+        for _ in range(100):
+            mc = self._read_reg(REG_MODE_CONFIG)
+            if (mc & 0x40) == 0:
+                break
+            time.sleep_ms(1)
+        # print("MODE_CONFIG after reset: 0x%02X" % mc)
+
+        # 3. FIFO configuration
         self._write_reg(REG_FIFO_CONFIG, 0x4F)
 
-        # SpO2 mode: RED + IR
-        self._write_reg(REG_MODE_CONFIG, 0x03)
-
-        # SpO2 configuration:
-        #  - SPO2_ADC_RGE = 01 (4096 nA full scale)
-        #  - SPO2_SR      = 0001 (100 samples per second)
-        #  - LED_PW       = 11 (411 us, 18-bit resolution)
-        # 0b0100_0111 = 0x27
+        # 4. SpO2 config (sample rate, pulse width, ADC range)
         self._write_reg(REG_SPO2_CONFIG, 0x27)
 
-        # LED pulse amplitudes (~7 mA, a safe starting point; adjust as needed)
+        # 5. LED pulse amplitudes
         self._write_reg(REG_LED1_PA, 0x24)  # Red LED
         self._write_reg(REG_LED2_PA, 0x24)  # IR LED
+
+        # 6. Enable interrupts: A_FULL + PPG_RDY
+        self._write_reg(REG_INTR_ENABLE_1, 0xC0)
+        self._write_reg(REG_INTR_ENABLE_2, 0x00)
+
+        # 7. Finally, set SpO2 mode
+        self._write_reg(REG_MODE_CONFIG, 0x03)
+
 
     def _clear_fifo_pointers(self):
         """Reset FIFO read/write/overflow pointers."""
@@ -246,45 +252,49 @@ class MAX30102:
     # -------------------------------------------------------------------------
     def _read_fifo_samples(self):
         """
-        Read all available samples from FIFO.
-
-        :return: list of (red, ir) tuples (raw 18-bit values); may be empty.
+        Robust FIFO reading for buggy pointer chips.
+        - Uses Observer pattern: observe INT_STATUS1 to decide reads.
+        - Producer-Consumer: sensor produces samples, we consume until empty.
+        - Error handling: timeout, I2C exceptions, invalid data checks.
         """
-        # Clear interrupt status registers (required pattern)
-        _ = self._read_reg(REG_INTR_STATUS_1)
-        _ = self._read_reg(REG_INTR_STATUS_2)
-
-        # Read FIFO read/write pointers
-        read_ptr = self._read_reg(REG_FIFO_RD_PTR)
-        write_ptr = self._read_reg(REG_FIFO_WR_PTR)
-
-        # Compute number of samples currently in FIFO (depth = 32 samples)
-        num_samples = write_ptr - read_ptr
-        if num_samples < 0:
-            num_samples += 32
-
-        if num_samples <= 0:
-            return []
-
-        # Each sample is 6 bytes: 3 bytes RED + 3 bytes IR
-        bytes_to_read = num_samples * 6
-        raw = self._read_reg(REG_FIFO_DATA, bytes_to_read)
-
         samples = []
-        for i in range(num_samples):
-            base = i * 6
+        max_reads = 32  # Max to prevent infinite loop (FIFO depth)
+        read_count = 0
 
-            # Extract 18-bit RED (left-justified)
-            red = ((raw[base] << 16) |
-                   (raw[base + 1] << 8) |
-                   raw[base + 2]) & 0x03FFFF
+        try:
+            while read_count < max_reads:
+                # Clear and check interrupt status
+                intr1 = self._read_reg(REG_INTR_STATUS_1)
+                _ = self._read_reg(REG_INTR_STATUS_2)
 
-            # Extract 18-bit IR
-            ir = ((raw[base + 3] << 16) |
-                  (raw[base + 4] << 8) |
-                  raw[base + 5]) & 0x03FFFF
+                # If no PPG_RDY, stop
+                if (intr1 & 0x40) == 0:
+                    break
 
-            samples.append((red, ir))
+                # Read 1 sample (6 bytes)
+                raw = self._read_reg(REG_FIFO_DATA, 6)
+
+                # Extract and validate
+                red = ((raw[0] << 16) | (raw[1] << 8) | raw[2]) & 0x03FFFF
+                ir = ((raw[3] << 16) | (raw[4] << 8) | raw[5]) & 0x03FFFF
+
+                # Basic validation: skip if data is zero/invalid
+                if red == 0 and ir == 0:
+                    continue
+
+                samples.append((red, ir))
+                read_count += 1
+
+                # Small delay to avoid I2C overload
+                time.sleep_ms(1)
+
+        except OSError as e:
+            print("I2C error in FIFO read:", e)
+            return []  # Return empty on error
+
+        # logging for production debugging
+        # if read_count > 0:
+        #     print("Read %d samples from FIFO" % read_count)
 
         return samples
 
@@ -626,6 +636,7 @@ time.sleep(1)
 
 # Server Configuration
 SERVER_IP = "136.113.226.196"
+# SERVER_IP = "10.206.166.137" # Local testing IP (Debug)
 SERVER_PORT = 9999
 DEVICE_ID = "esp32_001"  # Modify as needed
 
@@ -638,27 +649,72 @@ BATCH_SIZE = 20  # <<< adjustable batch size
 
 class VitalBatchSender:
     """
-    Handles buffering of vital sign data points and sending them to server in batches.
+    Simple safe batch sender for ESP32 + MicroPython.
+
+    Features:
+      - Size-based batching (batch_size)
+      - Hard limit on buffer length (max_buffer_points) to avoid OOM
+      - Optional time-based flush (flush_interval_ms)
     """
 
-    def __init__(self, device_id, url, batch_size):
+    def __init__(self,
+                 device_id,
+                 url,
+                 batch_size=20,
+                 max_buffer_points=200,
+                 flush_interval_ms=5000):
+        """
+        :param device_id: Unique device ID string
+        :param url: HTTP endpoint for POST
+        :param batch_size: Number of points per batch
+        :param max_buffer_points: Max points kept in memory
+        :param flush_interval_ms: Force flush if no send for this duration
+        """
         self.device_id = device_id
         self.url = url
         self.batch_size = batch_size
-        self.buffer = []
+        self.max_buffer_points = max_buffer_points
+        self.flush_interval_ms = flush_interval_ms
 
-    def add_point(self, point):
+        self.buffer = []
+        self.last_send_ms = time.ticks_ms()
+
+    def add_point(self, point, now_ms=None):
         """
-        Add a data point and send batch when buffer is full.
+        Add one data point to buffer, and send if batch is ready.
         """
+        if now_ms is None:
+            now_ms = time.ticks_ms()
+
         self.buffer.append(point)
 
-        if len(self.buffer) >= self.batch_size:
-            self._send_buffer()
+        # Enforce hard buffer limit (keep newest points)
+        if len(self.buffer) > self.max_buffer_points:
+            # Drop oldest points
+            drop_count = len(self.buffer) - self.max_buffer_points
+            self.buffer = self.buffer[drop_count:]
 
-    def _send_buffer(self):
+        # Size-based send
+        if len(self.buffer) >= self.batch_size:
+            self._send_buffer(now_ms)
+
+    def flush_if_due(self, now_ms=None):
         """
-        Send buffered data as one batch to the server.
+        Time-based flush: if there are unsent points and last send
+        was a while ago, send them.
+        """
+        if now_ms is None:
+            now_ms = time.ticks_ms()
+
+        if not self.buffer:
+            return
+
+        if time.ticks_diff(now_ms, self.last_send_ms) >= self.flush_interval_ms:
+            self._send_buffer(now_ms)
+
+    def _send_buffer(self, now_ms):
+        """
+        Internal: send current buffer as one HTTP POST batch.
         """
         if not self.buffer:
             return
@@ -678,17 +734,27 @@ class VitalBatchSender:
         }
 
         try:
-            resp = urequests.post(self.url, json=payload, timeout=10)
-            print("Batch sent. Status:", resp.status_code)
+            # Shorter timeout helps avoid long blocking
+            resp = urequests.post(self.url, json=payload, timeout=5)
+            status = resp.status_code
             resp.close()
+            print("Batch sent. Status:", status)
 
-            # Clear buffer only if request did not raise exception
+            # Clear buffer on success
             self.buffer = []
+            self.last_send_ms = now_ms
 
         except Exception as e:
-            # Log error; keep buffer so we might retry later
+            # Do not clear buffer; keep latest points but enforce max_buffer_points
             print("ERROR: Failed to send batch:", e)
-            # NOTE: You could add retry logic or buffer size limit here to avoid OOM.
+
+            if len(self.buffer) > self.max_buffer_points:
+                # Keep only the newest points
+                self.buffer = self.buffer[-self.max_buffer_points:]
+
+        finally:
+            # Help GC to reclaim memory
+            gc.collect()
 
 class CycleCounter:
     """
@@ -776,5 +842,7 @@ while True:
         # print(ujson.dumps(data_point))
 
         batch_sender.add_point(data_point)
+        # if cycle % 10 == 0:
+        #     print("cycle:", cycle, "hr:", heartrate, "spo2:", spo2)
 
     time.sleep_ms(5)

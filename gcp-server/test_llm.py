@@ -1,6 +1,6 @@
 import json
 from datetime import datetime
-from llm_interface import OpenAI_LLM
+from vitalguard.llm_interface import OpenAI_LLM
 
 # ========= CONFIG (modify with your own key) ==========
 API_KEY = "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"  # ← 填你的 key

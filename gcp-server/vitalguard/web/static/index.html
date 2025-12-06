@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>VitalGuard AI Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Chart.js for plotting -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      margin: 0;
+      padding: 0.75rem;
+      background: #f5f5f5;
+    }
+    header {
+      margin-bottom: 0.5rem;
+    }
+    h1 {
+      font-size: 1.3rem;
+      margin: 0 0 0.25rem 0;
+    }
+    #health-status {
+      font-size: 0.85rem;
+      color: #555;
+    }
+    /* Tabs */
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid #ddd;
+      margin-top: 0.5rem;
+    }
+    .tab-button {
+      flex: 1;
+      text-align: center;
+      padding: 0.4rem 0.2rem;
+      font-size: 0.9rem;
+      cursor: pointer;
+      border: none;
+      background: #eee;
+      color: #333;
+    }
+    .tab-button.active {
+      background: #fff;
+      border-bottom: 2px solid #007bff;
+      font-weight: 600;
+    }
+    .tab-content {
+      display: none;
+      margin-top: 0.5rem;
+    }
+    .tab-content.active {
+      display: block;
+    }
+    /* Cards */
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 0.6rem;
+      margin-bottom: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .card-title {
+      font-weight: 600;
+      margin-bottom: 0.4rem;
+      font-size: 0.95rem;
+    }
+    #realtime-status,
+    #status-info,
+    #report-status {
+      font-size: 0.8rem;
+      color: #666;
+      margin-bottom: 0.3rem;
+    }
+    canvas {
+      max-width: 100%;
+      height: 240px;
+    }
+    .status-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.9rem;
+      padding: 0.15rem 0;
+    }
+    .status-label {
+      color: #555;
+    }
+    .status-value {
+      font-weight: 600;
+    }
+    button {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+      border-radius: 4px;
+      border: 1px solid #007bff;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:disabled {
+      opacity: 0.6;
+      cursor: default;
+    }
+    ul {
+      padding-left: 1.1rem;
+      margin: 0.2rem 0;
+    }
+    li {
+      font-size: 0.88rem;
+      margin-bottom: 0.1rem;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: #fff;
+      margin-left: 0.3rem;
+    }
+    .badge-low { background:#28a745; }
+    .badge-moderate { background:#ffc107; color:#333; }
+    .badge-high { background:#dc3545; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>VitalGuard AI</h1>
+  <div id="health-status">后端状态检查中...</div>
+</header>
+
+<!-- Tabs -->
+<div class="tabs">
+  <button class="tab-button active" data-tab="realtime">实时信号</button>
+  <button class="tab-button" data-tab="status">当前状态</button>
+  <button class="tab-button" data-tab="report">AI 报告</button>
+</div>
+
+<!-- Tab: Realtime -->
+<div id="tab-realtime" class="tab-content active">
+  <div class="card">
+    <div class="card-title">PPG IR 信号</div>
+    <div id="realtime-status">加载数据中...</div>
+    <canvas id="ppgChart"></canvas>
+  </div>
+</div>
+
+<!-- Tab: Status -->
+<div id="tab-status" class="tab-content">
+  <div class="card">
+    <div class="card-title">当前离散状态</div>
+    <div id="status-info">加载中...</div>
+    <div class="status-row">
+      <div class="status-label">心率等级</div>
+      <div class="status-value" id="hr-level">-</div>
+    </div>
+    <div class="status-row">
+      <div class="status-label">活动状态</div>
+      <div class="status-value" id="activity-state">-</div>
+    </div>
+    <div class="status-row">
+      <div class="status-label">睡眠状态</div>
+      <div class="status-value" id="sleep-state">-</div>
+    </div>
+    <div class="status-row">
+      <div class="status-label">体温状态</div>
+      <div class="status-value" id="temp-status">-</div>
+    </div>
+    <div class="status-row">
+      <div class="status-label">SpO₂ 状态</div>
+      <div class="status-value" id="spo2-status">-</div>
+    </div>
+  </div>
+</div>
+
+<!-- Tab: Report -->
+<div id="tab-report" class="tab-content">
+  <div class="card">
+    <div class="card-title">生成最近健康报告</div>
+    <div id="report-status">点击下方按钮生成最近一段时间的总结。</div>
+    <button id="generate-report-btn">生成最近报告</button>
+  </div>
+  <div class="card" id="report-card" style="display:none;">
+    <div class="card-title">
+      报告概要
+      <span id="risk-badge"></span>
+    </div>
+    <div id="report-summary" style="font-size:0.9rem; margin-bottom:0.4rem;"></div>
+    <div>
+      <strong>即时建议：</strong>
+      <ul id="report-immediate-advice"></ul>
+    </div>
+    <div style="margin-top:0.3rem;">
+      <strong>趋势分析：</strong>
+      <div id="report-trend" style="font-size:0.88rem; margin-top:0.1rem;"></div>
+    </div>
+    <div style="margin-top:0.3rem; font-size:0.8rem; color:#666;" id="report-notes"></div>
+  </div>
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

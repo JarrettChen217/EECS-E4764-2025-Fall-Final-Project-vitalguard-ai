@@ -13,6 +13,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 from flask import Flask, request, jsonify
+from llm_interface import LLMInterface, OpenAI_LLM, build_health_prompt
 from openai import OpenAI, OpenAIError
 
 # ======================= CONFIGURATION =======================
@@ -310,7 +311,7 @@ class DataValidator:
 
         return True, None
 
-
+'''
 # ======================= LLM INTERFACE (UNCHANGED) =======================
 class LLMInterface(ABC):
     """LLM client abstract base class."""
@@ -365,7 +366,7 @@ class OpenAI_LLM(LLMInterface):
                     time.sleep(1.0)
 
         raise RuntimeError(f"LLM failed after {self.retries + 1} attempts: {last_error}")
-
+'''
 
 # ======================= FLASK SERVER =======================
 def create_flask_app(data_store: SharedDataStore) -> Flask:

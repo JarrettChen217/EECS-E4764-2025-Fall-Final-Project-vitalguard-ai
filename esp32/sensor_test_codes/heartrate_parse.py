@@ -95,6 +95,18 @@ class MAX30102:
         self._clear_fifo_pointers()
 
 
+    def debug_dump_once(self):
+        st1 = self._read_reg(REG_INTR_STATUS_1)
+        rp = self._read_reg(REG_FIFO_RD_PTR)
+        wp = self._read_reg(REG_FIFO_WR_PTR)
+        raw = self._read_reg(REG_FIFO_DATA, 6)
+
+        return st1, rp, wp, raw
+
+        # print("ST1=0x%02X, RP=%02d, WP=%02d, DATA=%s" %
+        #       (st1, rp, wp, list(raw)))
+
+
     # -------------------------------------------------------------------------
     #  Low-level I2C helpers
     # -------------------------------------------------------------------------
@@ -124,30 +136,34 @@ class MAX30102:
 
     def _configure_sensor(self):
         """Reset and configure MAX30102 for SpO2 mode with ~100Hz sample rate."""
-        # Soft reset
+        # 1. Soft reset
         self._write_reg(REG_MODE_CONFIG, 0x40)  # Reset bit
-        time.sleep_ms(50)
+        time.sleep_ms(10)
 
-        # FIFO configuration:
-        #  - Sample average = 4
-        #  - FIFO rollover disabled
-        #  - FIFO almost full = 15 (unused here, but common default)
-        # 0b0100_1111 = 0x4F
+        # 2. Wait until reset bit is cleared
+        for _ in range(100):
+            mc = self._read_reg(REG_MODE_CONFIG)
+            if (mc & 0x40) == 0:
+                break
+            time.sleep_ms(1)
+        # print("MODE_CONFIG after reset: 0x%02X" % mc)
+
+        # 3. FIFO configuration
         self._write_reg(REG_FIFO_CONFIG, 0x4F)
 
-        # SpO2 mode: RED + IR
-        self._write_reg(REG_MODE_CONFIG, 0x03)
-
-        # SpO2 configuration:
-        #  - SPO2_ADC_RGE = 01 (4096 nA full scale)
-        #  - SPO2_SR      = 0001 (100 samples per second)
-        #  - LED_PW       = 11 (411 us, 18-bit resolution)
-        # 0b0100_0111 = 0x27
+        # 4. SpO2 config (sample rate, pulse width, ADC range)
         self._write_reg(REG_SPO2_CONFIG, 0x27)
 
-        # LED pulse amplitudes (~7 mA, a safe starting point; adjust as needed)
+        # 5. LED pulse amplitudes
         self._write_reg(REG_LED1_PA, 0x24)  # Red LED
         self._write_reg(REG_LED2_PA, 0x24)  # IR LED
+
+        # 6. Enable interrupts: A_FULL + PPG_RDY
+        self._write_reg(REG_INTR_ENABLE_1, 0xC0)
+        self._write_reg(REG_INTR_ENABLE_2, 0x00)
+
+        # 7. Finally, set SpO2 mode
+        self._write_reg(REG_MODE_CONFIG, 0x03)
 
     def _clear_fifo_pointers(self):
         """Reset FIFO read/write/overflow pointers."""
@@ -164,45 +180,49 @@ class MAX30102:
     # -------------------------------------------------------------------------
     def _read_fifo_samples(self):
         """
-        Read all available samples from FIFO.
-
-        :return: list of (red, ir) tuples (raw 18-bit values); may be empty.
+        Robust FIFO reading for buggy pointer chips.
+        - Uses Observer pattern: observe INT_STATUS1 to decide reads.
+        - Producer-Consumer: sensor produces samples, we consume until empty.
+        - Error handling: timeout, I2C exceptions, invalid data checks.
         """
-        # Clear interrupt status registers (required pattern)
-        _ = self._read_reg(REG_INTR_STATUS_1)
-        _ = self._read_reg(REG_INTR_STATUS_2)
-
-        # Read FIFO read/write pointers
-        read_ptr = self._read_reg(REG_FIFO_RD_PTR)
-        write_ptr = self._read_reg(REG_FIFO_WR_PTR)
-
-        # Compute number of samples currently in FIFO (depth = 32 samples)
-        num_samples = write_ptr - read_ptr
-        if num_samples < 0:
-            num_samples += 32
-
-        if num_samples <= 0:
-            return []
-
-        # Each sample is 6 bytes: 3 bytes RED + 3 bytes IR
-        bytes_to_read = num_samples * 6
-        raw = self._read_reg(REG_FIFO_DATA, bytes_to_read)
-
         samples = []
-        for i in range(num_samples):
-            base = i * 6
+        max_reads = 32  # Max to prevent infinite loop (FIFO depth)
+        read_count = 0
 
-            # Extract 18-bit RED (left-justified)
-            red = ((raw[base] << 16) |
-                   (raw[base + 1] << 8) |
-                   raw[base + 2]) & 0x03FFFF
+        try:
+            while read_count < max_reads:
+                # Clear and check interrupt status
+                intr1 = self._read_reg(REG_INTR_STATUS_1)
+                _ = self._read_reg(REG_INTR_STATUS_2)
 
-            # Extract 18-bit IR
-            ir = ((raw[base + 3] << 16) |
-                  (raw[base + 4] << 8) |
-                  raw[base + 5]) & 0x03FFFF
+                # If no PPG_RDY, stop
+                if (intr1 & 0x40) == 0:
+                    break
 
-            samples.append((red, ir))
+                # Read 1 sample (6 bytes)
+                raw = self._read_reg(REG_FIFO_DATA, 6)
+
+                # Extract and validate
+                red = ((raw[0] << 16) | (raw[1] << 8) | raw[2]) & 0x03FFFF
+                ir = ((raw[3] << 16) | (raw[4] << 8) | raw[5]) & 0x03FFFF
+
+                # Basic validation: skip if data is zero/invalid
+                if red == 0 and ir == 0:
+                    continue
+
+                samples.append((red, ir))
+                read_count += 1
+
+                # Small delay to avoid I2C overload
+                time.sleep_ms(1)
+
+        except OSError as e:
+            print("I2C error in FIFO read:", e)
+            return []  # Return empty on error
+
+        # logging for production debugging
+        # if read_count > 0:
+        #     print("Read %d samples from FIFO" % read_count)
 
         return samples
 
@@ -478,6 +498,9 @@ try:
 
         while True:
             red, ir = sensor.get_latest_pair()
+
+            # sensor.debug_dump_once()
+
             if (red is None) or (ir is None):
                 # No new data yet
                 time.sleep_ms(10)

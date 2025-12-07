@@ -66,3 +66,22 @@ class VitalSignsDataPoint:
             },
             'server_timestamp': self.server_timestamp
         }
+
+    @staticmethod
+    def from_dict(data: Dict[str, Any]) -> 'VitalSignsDataPoint':
+        ppg = data.get('ppg', {})
+        accel = data.get('accel', {})
+        return VitalSignsDataPoint(
+            cycle=data.get('cycle', 0),
+            timestamp=data.get('timestamp', ''),
+            ir=ppg.get('ir', 0),
+            red=ppg.get('red', 0),
+            heartrate=ppg.get('heartrate', 0.0),
+            spo2=ppg.get('spo2', 0.0),
+            temperature=data.get('temperature', 0.0),
+            humidity=data.get('humidity', 0.0),
+            force=data.get('force', 0.0),
+            ax=accel.get('ax', 0.0),
+            ay=accel.get('ay', 0.0),
+            az=accel.get('az', 0.0)
+        )

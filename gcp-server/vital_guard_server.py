@@ -342,7 +342,9 @@ def initialize_application():
     print("🔧 Initializing data store...")
     data_store = SharedDataStore(
         max_size=MAX_DATA_BUFFER_SIZE,
-        persist_file=DATA_FILE
+        persist_file=DATA_FILE,
+        load_persisted_on_init=True, # for Debugging with webui testing
+        initial_restore_count=256
     )
     # Initialize ML analyzer.
     print("🔧 Initializing ML analyzer...")
@@ -395,6 +397,7 @@ def main():
     """
     print(f"\n🚀 Starting server on {FLASK_HOST}:{FLASK_PORT}...")
     print(f"🔗 Send POST requests to: http://{FLASK_HOST}:{FLASK_PORT}/api/vitals")
+    print(f"🔗 Access Web UI at: http://{FLASK_HOST}:{FLASK_PORT}/ui")
     print("\nPress Ctrl+C to stop the server\n")
     try:
         # Use Flask built-in server for development

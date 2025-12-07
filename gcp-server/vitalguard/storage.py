@@ -10,15 +10,20 @@ import numpy as np
 from .models import VitalSignsDataPoint
 
 
-class SharedDataStore:
-    """
-    thread-safe storage for multi-sensor data points
-    supports batch writes, time-series queries, data aggregation
-    """
+import contextlib
 
-    def __init__(self, max_size: int, persist_file: Optional[str] = None):
+class SharedDataStore:
+    def __init__(
+        self,
+        max_size: int,
+        persist_file: Optional[str] = None,
+        load_persisted_on_init: bool = False,
+        initial_restore_count: int = 128
+    ):
         self.max_size = max_size
         self.persist_file = persist_file
+        self.load_persisted_on_init = load_persisted_on_init
+        self.initial_restore_count = initial_restore_count
 
         self.data_buffer: Deque[VitalSignsDataPoint] = deque(maxlen=max_size)
         self.lock = threading.Lock()
@@ -32,6 +37,50 @@ class SharedDataStore:
         if self.persist_file and not os.path.exists(self.persist_file):
             open(self.persist_file, 'w').close()
             print(f"📁 Created persistence file: {self.persist_file}")
+
+        # Load persisted data if applicable
+        self._load_persisted_data_if_needed()
+
+    def _load_persisted_data_if_needed(self) -> None:
+        """Template hook: load persisted data when the flag is enabled."""
+        if not (self.persist_file and self.load_persisted_on_init):
+            return
+        self._restore_from_persistence(self.initial_restore_count)
+
+    def _restore_from_persistence(self, record_limit: int = 128) -> None:
+        """Tail-read the persistence file and recover the most recent records."""
+        if not os.path.isfile(self.persist_file):
+            return
+
+        tail_lines: Deque[str] = deque(maxlen=record_limit)
+
+        with contextlib.suppress(OSError), open(self.persist_file, 'r') as file:
+            for line in file:
+                stripped = line.strip()
+                if stripped:
+                    tail_lines.append(stripped)
+
+        if not tail_lines:
+            return
+
+        recovered_points: List[VitalSignsDataPoint] = []
+        for raw_line in tail_lines:
+            try:
+                payload = json.loads(raw_line)
+                recovered_points.append(VitalSignsDataPoint.from_dict(payload))
+            except (json.JSONDecodeError, KeyError, TypeError) as exc:
+                print(f"⚠️  Skipped invalid record during restore: {exc}")
+
+        if not recovered_points:
+            return
+
+        with self.lock:
+            for point in recovered_points:
+                self.data_buffer.append(point)
+            self.total_received += len(recovered_points)
+
+        print(f"♻️  Restored {len(recovered_points)} records from persistence")
+
 
     def add_batch(self, data_points: List[VitalSignsDataPoint]) -> int:
         """

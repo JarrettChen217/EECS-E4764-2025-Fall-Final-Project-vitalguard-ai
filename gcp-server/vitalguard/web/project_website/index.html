@@ -6,7 +6,7 @@
 -->
 <html>
 	<head>
-		<title>Columbia University EECS E4764 IoT Project Report #0</title>
+		<title>VitalGuard AI – Columbia University EECS E4764 IoT Project</title>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<!--[if lte IE 8]><script src="assets/js/ie/html5shiv.js"></script><![endif]-->
@@ -17,264 +17,540 @@
 	<body>
 
 		<!-- Header -->
-			<div id="header">
+		<div id="header">
 
-				<div class="top">
+			<div class="top">
 
-					<!-- Logo -->
-						<div id="logo">
-							<!-- <span class="image avatar48"><img src="images/avatar.jpg" alt="" /></span> -->
-							<h1 id="title">Project Name</h1>
-							<p>Columbia University <br>
-								EECS E4764 Fall'25 <br>
-								Artificial Intelligence of Things<br>
-								Team 0 Project Report
-							</p>
-						</div>
-
-					<!-- Nav -->
-						<nav id="nav">
-							<!--
-
-								Prologue's nav expects links in one of two formats:
-
-								1. Hash link (scrolls to a different section within the page)
-
-								   <li><a href="#foobar" id="foobar-link" class="icon fa-whatever-icon-you-want skel-layers-ignoreHref"><span class="label">Foobar</span></a></li>
-
-								2. Standard link (sends the user to another page/site)
-
-								   <li><a href="http://foobar.tld" id="foobar-link" class="icon fa-whatever-icon-you-want"><span class="label">Foobar</span></a></li>
-
-							-->
-							<ul>
-								<li><a href="#top" id="top-link" class="skel-layers-ignoreHref"><span class="icon fa-home">Abstract</span></a></li>
-								<li><a href="#motivation" id="motivation-link" class="skel-layers-ignoreHref"><span class="icon fa-th">Motivation</span></a></li>
-								<li><a href="#system" id="system-link" class="skel-layers-ignoreHref"><span class="icon fa-th">System</span></a></li>
-								<li><a href="#results" id="results-link" class="skel-layers-ignoreHref"><span class="icon fa-th">Results</span></a></li>
-								<li><a href="#references" id="references-link" class="skel-layers-ignoreHref"><span class="icon fa-th">References</span></a></li>
-								<li><a href="#team" id="team-link" class="skel-layers-ignoreHref"><span class="icon fa-user">Our Team</span></a></li>
-								<li><a href="#contact" id="contact-link" class="skel-layers-ignoreHref"><span class="icon fa-envelope">Contact</span></a></li>
-							</ul>
-						</nav>
-
+				<!-- Logo -->
+				<div id="logo">
+					<!-- <span class="image avatar48"><img src="images/avatar.jpg" alt="" /></span> -->
+					<h1 id="title">VitalGuard AI</h1>
+					<p>Columbia University <br>
+						EECS E4764 Fall '25 <br>
+						Artificial Intelligence of Things<br>
+						Team 19 Project Report
+					</p>
 				</div>
 
-				<div class="bottom">
-
-					<!-- Social Icons -->
-						<ul class="icons">
-							<li><a href="#" class="icon fa-twitter"><span class="label">Twitter</span></a></li>
-							<li><a href="#" class="icon fa-facebook"><span class="label">Facebook</span></a></li>
-							<li><a href="#" class="icon fa-github"><span class="label">Github</span></a></li>
-							<li><a href="#" class="icon fa-dribbble"><span class="label">Dribbble</span></a></li>
-							<li><a href="#" class="icon fa-envelope"><span class="label">Email</span></a></li>
-						</ul>
-
-				</div>
+				<!-- Nav -->
+				<nav id="nav">
+					<ul>
+						<li><a href="#top" id="top-link" class="skel-layers-ignoreHref"><span class="icon fa-home">Abstract</span></a></li>
+						<li><a href="#motivation" id="motivation-link" class="skel-layers-ignoreHref"><span class="icon fa-th">Motivation</span></a></li>
+						<li><a href="#system" id="system-link" class="skel-layers-ignoreHref"><span class="icon fa-th">System</span></a></li>
+						<li><a href="#results" id="results-link" class="skel-layers-ignoreHref"><span class="icon fa-th">Results</span></a></li>
+						<li><a href="#references" id="references-link" class="skel-layers-ignoreHref"><span class="icon fa-th">References</span></a></li>
+						<li><a href="#team" id="team-link" class="skel-layers-ignoreHref"><span class="icon fa-user">Our Team</span></a></li>
+                        <li><a href="/ui" id="ui-link"><span class="icon fa-desktop">Live Web UI</span></a></li>
+						<li><a href="#contact" id="contact-link" class="skel-layers-ignoreHref"><span class="icon fa-envelope">Contact</span></a></li>
+					</ul>
+				</nav>
 
 			</div>
+
+			<div class="bottom">
+
+				<!-- Social Icons -->
+				<ul class="icons">
+					<li><a href="#" class="icon fa-twitter"><span class="label">Twitter</span></a></li>
+					<li><a href="#" class="icon fa-facebook"><span class="label">Facebook</span></a></li>
+                    <li>
+                        <!-- Project GitHub repository link -->
+                        <a href="https://github.com/JarrettChen217/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai"
+                           class="icon fa-github"
+                           target="_blank"
+                           rel="noopener noreferrer">
+                            <span class="label">GitHub</span>
+                        </a>
+                    </li>
+					<li><a href="#" class="icon fa-dribbble"><span class="label">Dribbble</span></a></li>
+					<li><a href="#" class="icon fa-envelope"><span class="label">Email</span></a></li>
+				</ul>
+
+			</div>
+
+		</div>
 
 		<!-- Main -->
-			<div id="main">
+		<div id="main">
 
-				<!-- Intro -->
-					<section id="top" class="one dark cover">
-						<div class="container">
+			<!-- Intro / Abstract -->
+			<section id="top" class="one dark cover">
+				<div class="container">
 
-								<iframe width="560" height="315" src="https://www.youtube.com/embed/_AlcRoqS65E" frameborder="0" allowfullscreen></iframe>
+					<!-- TODO: Replace the src URL with your final demo / presentation video -->
+					<iframe width="560" height="315"
+						src="https://www.youtube.com/embed/XXXXXXXXXXX"
+						title="VitalGuard AI Demo"
+						frameborder="0"
+						allowfullscreen></iframe>
 
-								<h2 class="alt">Project Name</h2>
-								<p>Project Wonderland is a blah blah blah</p>
-								<p>(Abstract here)</p>
+					<h2 class="alt">VitalGuard AI: An AIoT Wearable for Real‑Time Health Insights &amp; Alerts</h2>
 
+					<p>
+						VitalGuard AI is a compact wearable AIoT system that continuously fuses multi-sensor vital signs
+						(e.g., heart rate, SpO₂, temperature, activity, and stress) on an ESP32-based edge platform and
+						a cloud backend to provide personalized health insights and trigger emergency alerts in real time.
+					</p>
 
-							<footer>
-								<a href="#motivation" class="button scrolly">Motivation</a>
-							</footer>
+					<p>
+						In the fields of chronic disease management and elderly care, continuous and low-cost monitoring
+						outside clinical settings is crucial. By combining embedded sensing, cloud analytics, and
+						large language models (LLMs), VitalGuard AI helps users track long-term health trends, receive
+						actionable lifestyle suggestions (such as hydration, rest, and medication timing cues), and
+						automatically notify caregivers or emergency services when dangerous anomalies or falls are detected.
+					</p>
 
-						</div>
-					</section>
+					<footer>
+<!--						<a href="#motivation" class="button scrolly">Motivation</a>-->
+                        <a href="/ui" class="button scrolly">User Web UI</a>
+					</footer>
 
-				<!-- Portfolio -->
-					<section id="motivation" class="two">
-						<div class="container">
+				</div>
+			</section>
 
-							<header>
-								<h2>Motivation</h2>
-							</header>
+			<!-- Motivation -->
+			<section id="motivation" class="two">
+				<div class="container">
 
-							<p align="left">You can choose to use photos or figures to help</p>
+					<header>
+						<h2>Motivation</h2>
+					</header>
 
+					<p align="left">
+						Chronic diseases and aging populations are driving a strong need for continuous, low-cost
+						health monitoring outside traditional clinical environments. Conventional check-ups are
+						infrequent and often miss early warning signs, while hospital-grade monitoring is expensive
+						and not scalable for daily life.
+					</p>
 
-
-						</div>
-					</section>
-
-
-					<section id="system" class="three">
-						<div class="container">
-
-							<header>
-								<h2>System</h2>
-							</header>
-
-							<p align="left">Remember to use combination of descriptions, photos, and figures</p>
-
-							<h3 align="left">Architecture</h3>
-
-							<p align="left">Blah blah blah</p>
-
-
-							<h3 align="left">Technical Components</h3>
-
-							<p align="left">Blah blah blah</p>
-
-
-							<h3 align="left">Prototype</h3>
-
-							<p align="left">Blah blah blah</p>
-
-
-
-						</div>
-					</section>
-
-
-					<section id="results" class="two">
-						<div class="container">
-
-							<header>
-								<h2>Results</h2>
-							</header>
-
-							<p align="left">Remember to use figures to help illustrate results</p>
-
-
-							<article class="item">
-								<a href="#" class="image fit"><img src="images/pic06.jpg" alt="" /></a>
-								<header>
-									<h3>Caption</h3>
-								</header>
-							</article>
-
-
-						</div>
-					</section>
-
-					<section id="references" class="three">
-						<div class="container">
-
-							<header>
-								<h2>References</h2>
-							</header>
-
-							<p align="left">Blah blah blah</p>
-
-						</div>
-					</section>
-
-
-				<!-- About Me -->
-					<section id="team" class="two">
-						<div class="container">
-
-							<header>
-								<h2>Our Team</h2>
-							</header>
-
-							<!-- <a href="#" class="image featured"><img src="images/pic08.jpg" alt="" /></a> -->
-
-
-							<div class="row">
-								<div class="4u 12u$(mobile)">
-									<article class="item">
-										<a href="#" class="image fit"><img src="images/pic07.jpg" alt="" /></a>
-										<header>
-											<h3>Team Member</h3>
-											<p>Description and link</p>
-										</header>
-									</article>
-								</div>
-								<div class="4u 12u$(mobile)">
-									<article class="item">
-										<a href="#" class="image fit"><img src="images/pic07.jpg" alt="" /></a>
-										<header>
-											<h3>Team Member</h3>
-											<p>Description and link</p>
-										</header>
-									</article>
-								</div>
-								<div class="4u$ 12u$(mobile)">
-									<article class="item">
-										<a href="#" class="image fit"><img src="images/pic07.jpg" alt="" /></a>
-										<header>
-											<h3>Team Member</h3>
-											<p>Description and link</p>
-										</header>
-									</article>
-								</div>
-							</div>
-
-						</div>
-					</section>
-
-				<!-- Contact -->
-					<section id="contact" class="four">
-						<div class="container">
-
-							<header>
-								<h2>Contact</h2>
-							</header>
-
-							<p align="left">
-								<strong>Contact Name 1: </strong>email here</br>
-								<strong>Contact Name 2: </strong>email here</br>
-								<strong>Other Contact Information: </strong>other contact info</br>
-							</br>
-								<strong>Columbia University </strong><a href="http://www.ee.columbia.edu">Department of Electrical Engineering</a><br>
-								<!-- <strong>Class Website:</strong>
-									<a href="https://edblogs.columbia.edu/eecs4764-001-2019-3/">Columbia University EECS E4764 Fall '22 IoT</a></br> -->
-								<strong>Instructor:</strong> <a href="https://www.engineering.columbia.edu/faculty-staff/directory/xiaofan-fred-jiang">Professsor Xiaofan (Fred) Jiang</a>
-							</p>
-
-
-							<!-- <form method="post" action="#">
-								<div class="row">
-									<div class="6u 12u$(mobile)"><input type="text" name="name" placeholder="Name" /></div>
-									<div class="6u$ 12u$(mobile)"><input type="text" name="email" placeholder="Email" /></div>
-									<div class="12u$">
-										<textarea name="message" placeholder="Message"></textarea>
-									</div>
-									<div class="12u$">
-										<input type="submit" value="Send Message" />
-									</div>
-								</div>
-							</form> -->
-
-						</div>
-					</section>
-
-			</div>
-
-		<!-- Footer -->
-			<div id="footer">
-
-				<!-- Copyright -->
-					<ul class="copyright">
-						<li>&copy; IoT Project | All rights reserved.</li><li>Design: <a href="http://html5up.net">HTML5 UP</a></li>
+					<p align="left">
+						<b>Relevance.</b> Our goal is to enable out-of-clinic monitoring for:
+					</p>
+					<ul align="left">
+						<li>Chronic disease management (e.g., cardiovascular conditions).</li>
+						<li>Elderly care and safer independent living.</li>
+						<li>High-stress or high-risk environments (e.g., campus safety, shift workers).</li>
 					</ul>
 
-			</div>
+					<p align="left">
+						<b>Social value.</b> By continuously tracking multi-modal signals, VitalGuard AI can:
+					</p>
+					<ul align="left">
+						<li>Detect anomalies earlier, enabling timely medical attention.</li>
+						<li>Provide peace of mind for families and caregivers through automatic alerts.</li>
+						<li>Support safer independent living for older adults or vulnerable individuals.</li>
+					</ul>
+
+					<p align="left">
+						<b>Utility.</b> Beyond raw numbers, we aim to provide:
+					</p>
+					<ul align="left">
+						<li>Actionable lifestyle suggestions (hydration, rest, activity pacing, medication cues).</li>
+						<li>Long-term trend tracking through a web dashboard and mobile-friendly interface.</li>
+						<li>Automatic alerts on falls or abnormal vital patterns via SMS/email/notifications.</li>
+					</ul>
+
+					<p align="left">
+						<b>Market potential.</b> The same platform can be adapted to:
+					</p>
+					<ul align="left">
+						<li>Remote Patient Monitoring (RPM) pilots with healthcare providers.</li>
+						<li>Wellness wearables and personal health tracking.</li>
+						<li>Campus safety and corporate wellness programs.</li>
+					</ul>
+
+					<!-- TODO: Optionally insert a figure or photo illustrating use cases -->
+					<!-- Example:
+					<a href="#" class="image fit"><img src="images/motivation_use_cases.jpg" alt="VitalGuard AI use cases" /></a>
+					-->
+
+				</div>
+			</section>
+
+			<!-- System -->
+			<section id="system" class="three">
+				<div class="container">
+
+					<header>
+						<h2>System</h2>
+					</header>
+
+					<p align="left">
+						VitalGuard AI is an end-to-end AIoT system composed of a wearable hardware platform, an ESP32-based
+						edge computing layer, Wi‑Fi/Bluetooth connectivity, a cloud backend on Google Cloud Platform (GCP),
+						an AI (LLM) layer for health report generation, and a web dashboard for visualization.
+					</p>
+
+					<h3 align="left">Architecture</h3>
+
+					<p align="left">
+						The overall architecture follows a sensing &rarr; edge processing &rarr; cloud analytics &rarr;
+						AI insights &rarr; user feedback loop:
+					</p>
+
+					<ul align="left">
+						<li><b>Hardware / Sensing Layer.</b>
+							A compact wearable integrates multiple sensors:
+							<ul>
+								<li>MAX86150 for heart rate, SpO₂, and ECG (integrated PPG+ECG, high SNR).</li>
+								<li>TMP117 for high-accuracy body/skin temperature (±0.1&nbsp;°C, I²C).</li>
+								<li>ADXL345 3-axis accelerometer for motion, posture, and fall detection.</li>
+								<li>FSR402 force sensor for pressure/force-based contact and activity cues.</li>
+							</ul>
+							These sensors are interfaced with an ESP32 microcontroller.
+						</li>
+
+						<li><b>Edge Computing (ESP32 with MicroPython).</b>
+							The ESP32 continuously acquires raw signals, performs basic pre-processing
+							(e.g., filtering, feature extraction, normalization, threshold-based anomaly hints),
+							and manages communication over Wi‑Fi and Bluetooth.
+						</li>
+
+						<li><b>Network Layer.</b>
+							Data and extracted features are transmitted from the ESP32 to the cloud server in real time
+							via Wi‑Fi. Depending on the scenario, MQTT, HTTP, or persistent sockets can be used.
+						</li>
+
+						<li><b>Cloud Backend (GCP + Flask).</b>
+							A Python/Flask backend hosted on Google Cloud Platform receives streaming data through
+							sockets or HTTP endpoints. A processing pipeline performs:
+							<ul>
+								<li>Data cleaning and resampling.</li>
+								<li>Feature extraction (heart rate variability, activity levels, temperature trends).</li>
+								<li>Normalization and aggregation into time windows.</li>
+								<li>Rule-based and lightweight ML-based anomaly screening.</li>
+							</ul>
+							Processed data and events are stored for visualization and further analysis.
+						</li>
+
+						<li><b>AI / LLM Layer.</b>
+							A third-party LLM is integrated via API. It periodically pulls processed summaries and
+							generates:
+							<ul>
+								<li>Easy-to-understand health reports.</li>
+								<li>Personalized lifestyle and habit recommendations.</li>
+								<li>Context-aware explanations when anomalies are detected.</li>
+							</ul>
+						</li>
+
+						<li><b>Alerting &amp; User Interfaces.</b>
+							When serious anomalies (e.g., potential arrhythmia, very high/low temperature) or
+							a fall event are detected, the backend can trigger:
+							<ul>
+								<li>Notifications to configured emergency contacts.</li>
+								<li>Potential escalation to emergency services depending on the deployment scenario.</li>
+							</ul>
+							Users and caregivers can access:
+							<ul>
+								<li>A web dashboard to view real-time vitals and historical trends.</li>
+								<li>AI-generated health summaries and suggestions.</li>
+								<li>Notifications and event logs (e.g., falls, critical alerts).</li>
+							</ul>
+						</li>
+					</ul>
+
+					<a href="#" class="image fit"><img src="images/block_diagram.png" alt="VitalGuard AI block diagram" /></a>
+
+					<h3 align="left">Key Features</h3>
+
+					<ul align="left">
+						<li><b>Continuous Multi-Sensor Monitoring.</b>
+							24/7 collection of heart rate, SpO₂, temperature, activity, and stress-related metrics.
+						</li>
+						<li><b>Real-Time Data Analytics.</b>
+							On-device pre-processing and real-time streaming to a cloud server for further analytics.
+						</li>
+						<li><b>AI-Driven Health Reports.</b>
+							LLM-generated health summaries and personalized suggestions, using structured features instead
+							of raw time series.
+						</li>
+						<li><b>Emergency Alert System.</b>
+							Automatic notifications when falls or critical vital sign anomalies are detected.
+						</li>
+						<li><b>Web Visualization Dashboard.</b>
+							Browser-based UI to monitor real-time data, long-term trends, and AI-generated insights.
+						</li>
+					</ul>
+
+					<h3 align="left">Technical Components</h3>
+
+					<p align="left"><b>Hardware.</b></p>
+					<ul align="left">
+						<li>ESP32 microcontroller for edge computing and wireless connectivity.</li>
+						<li>MAX86150: heart rate, SpO₂, ECG sensing.</li>
+						<li>TMP117: high-accuracy temperature sensing.</li>
+						<li>ADXL345: 3-axis accelerometer for motion and fall detection.</li>
+						<li>FSR402: force/pressure sensing to infer contact and certain activities.</li>
+						<li>Wi‑Fi: high-speed cloud connectivity.</li>
+						<li>Bluetooth: short-range, low-energy link for local streaming or configuration.</li>
+					</ul>
+
+					<p align="left"><b>Embedded / Edge Software.</b></p>
+					<ul align="left">
+						<li>MicroPython firmware running on the ESP32.</li>
+						<li>Drivers and I²C/SPI/UART interfaces for integrated sensors.</li>
+						<li>On-device pre-processing: simple filters, downsampling, feature extraction.</li>
+						<li>Basic threshold-based anomaly hints and fall-detection heuristics.</li>
+						<li>Wi‑Fi/Bluetooth communication management and reconnection logic.</li>
+					</ul>
+
+					<p align="left"><b>Cloud Backend &amp; Data Pipeline.</b></p>
+					<ul align="left">
+						<li>Google Cloud Platform (GCP) for hosting the backend.</li>
+						<li>Python Flask server for REST APIs / socket endpoints.</li>
+						<li>Socket-based or WebSocket data ingestion from the ESP32.</li>
+						<li>Python scripts for feature extraction, normalization, and aggregation.</li>
+						<li>Persistent storage for time-series vitals and event logs.</li>
+						<li>Systemd + Gunicorn (or similar) for production deployment.</li>
+					</ul>
+
+					<p align="left"><b>AI / LLM Integration.</b></p>
+					<ul align="left">
+						<li>Third-party LLM accessed via API.</li>
+						<li>Prompting with structured trends, statistics, and events rather than raw signals.</li>
+						<li>Generation of human-friendly reports and explanations.</li>
+					</ul>
+
+					<p align="left"><b>Frontend &amp; User Experience.</b></p>
+					<ul align="left">
+						<li>Web UI built with HTML, CSS, and JavaScript.</li>
+						<li>Visualization of current vitals, historical plots, and risk indicators.</li>
+						<li>Display of AI-generated health summaries and recommendations.</li>
+						<li>Mobile-friendly view; optional mobile app for richer interaction.</li>
+					</ul>
+
+					<h3 align="left">Project Structure</h3>
+
+					<pre><code>.
+                        ├── esp32/          # ESP32 (MicroPython) code
+                        ├── gcp-server/     # GCP Flask backend service code
+                        ├── docs/           # Project documentation
+                        ├── .gitignore      # Git ignore configuration
+                        └── README.md       # Project overview
+					</code></pre>
+
+					<h3 align="left">Prototype</h3>
+
+					<p align="left">
+						The initial prototype consists of an ESP32 development board connected to MAX86150, TMP117,
+						ADXL345, and FSR402 sensors, assembled on a breadboard and later integrated into a wearable
+						form factor (e.g., wristband or armband). The device is powered by a battery pack and streams
+						data over Wi‑Fi to the GCP backend.
+					</p>
+
+					<p align="left">
+						The web dashboard shows real-time heart rate, SpO₂, temperature, and activity indicators,
+						along with AI-generated textual summaries. Fall events or critical vital anomalies are clearly
+						highlighted as alerts in the UI.
+					</p>
+
+					<!-- TODO: Replace these placeholder images with photos of your hardware prototype and dashboard -->
+					<!--
+					<a href="#" class="image fit"><img src="images/prototype_hardware.jpg" alt="VitalGuard AI hardware prototype" /></a>
+					<a href="#" class="image fit"><img src="images/prototype_dashboard.jpg" alt="VitalGuard AI web dashboard" /></a>
+					-->
+
+				</div>
+			</section>
+
+			<!-- Results -->
+			<section id="results" class="two">
+				<div class="container">
+
+					<header>
+						<h2>Results</h2>
+					</header>
+
+					<p align="left">
+						This section summarizes the experimental evaluation and demonstration of VitalGuard AI.
+						We plan to present:
+					</p>
+
+					<ul align="left">
+						<li><b>Real-Time Monitoring Demo.</b>
+							Continuous streaming of heart rate, SpO₂, temperature, and motion data from the wearable
+							to the web dashboard.
+						</li>
+						<li><b>Abnormal Vital Detection.</b>
+							Test scenarios where synthetic or controlled anomalies in heart rate or temperature trigger
+							backend alerts.
+						</li>
+						<li><b>Fall Detection.</b>
+							Evaluation of ADXL345-based fall detection heuristics and corresponding alert latency.
+						</li>
+						<li><b>AI Health Report Quality.</b>
+							Qualitative examples of LLM-generated reports and user feedback on readability and usefulness.
+						</li>
+						<li><b>End-to-End Latency.</b>
+							Measurement of the delay from sensing an event to visualizing it on the dashboard and/or
+							receiving an alert notification.
+						</li>
+					</ul>
+
+					<!-- TODO: Replace with real result figures/plots/screenshots -->
+					<article class="item">
+						<a href="#" class="image fit">
+							<img src="images/pic_results_placeholder.jpg" alt="Example VitalGuard AI results visualization" />
+						</a>
+						<header>
+							<h3>Example: Real-time heart rate and activity trend visualization</h3>
+						</header>
+					</article>
+
+				</div>
+			</section>
+
+			<!-- References -->
+			<section id="references" class="three">
+				<div class="container">
+
+					<header>
+						<h2>References</h2>
+					</header>
+
+					<p align="left">
+						Selected references and resources used in the design and implementation of VitalGuard AI:
+					</p>
+
+					<ul align="left">
+						<li>MAX86150: Integrated PPG and ECG Analog Front End for Wearable Health – Product datasheet.</li>
+						<li>TMP117: ±0.1&nbsp;°C High-Accuracy Digital Temperature Sensor – Product datasheet.</li>
+						<li>ADXL345: 3-Axis, ±2&nbsp;g/±4&nbsp;g/±8&nbsp;g/±16&nbsp;g Digital Accelerometer – Product datasheet.</li>
+						<li>FSR402: Force Sensitive Resistor – Product datasheet and application notes.</li>
+						<li>MicroPython documentation: <a href="https://docs.micropython.org/" target="_blank">https://docs.micropython.org/</a></li>
+						<li>Flask documentation: <a href="https://flask.palletsprojects.com/" target="_blank">https://flask.palletsprojects.com/</a></li>
+						<li>Google Cloud Platform (GCP) documentation: <a href="https://cloud.google.com/docs" target="_blank">https://cloud.google.com/docs</a></li>
+						<li>LLM / AI API provider documentation (e.g., OpenAI, Anthropic, etc.) for health report generation.</li>
+					</ul>
+
+				</div>
+			</section>
+
+			<!-- Our Team -->
+			<section id="team" class="two">
+				<div class="container">
+
+					<header>
+						<h2>Our Team</h2>
+					</header>
+
+					<!-- <a href="#" class="image featured"><img src="images/pic08.jpg" alt="" /></a> -->
+
+					<div class="row">
+						<div class="4u 12u$(mobile)">
+							<article class="item">
+								<!-- TODO: Replace with Team Member 1 photo -->
+								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 1" /></a>
+								<header>
+									<h3>Team Member 1</h3>
+									<p>Yizheng Tang / yt2992 – Embedded systems &amp; firmware</p>
+								</header>
+							</article>
+						</div>
+						<div class="4u 12u$(mobile)">
+							<article class="item">
+								<!-- TODO: Replace with Team Member 2 photo -->
+								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 2" /></a>
+								<header>
+									<h3>Team Member 2</h3>
+									<p>Hao Chen / hc3625 – Cloud backend frontend &amp; data pipeline</p>
+								</header>
+							</article>
+						</div>
+                        <div class="4u 12u$(mobile)">
+							<article class="item">
+								<!-- TODO: Replace with Team Member 3 photo -->
+								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 1" /></a>
+								<header>
+									<h3>Team Member 4</h3>
+									<p>Sripad Karne / sk5695 – Machine Learning &amp; Data digging</p>
+								</header>
+							</article>
+						</div>
+						<div class="4u$ 12u$(mobile)">
+							<article class="item">
+								<!-- TODO: Replace with Team Member 4 photo -->
+								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 3" /></a>
+								<header>
+									<h3>Team Member 4</h3>
+									<p>Daolin Li / dl3832 – AI integration</p>
+								</header>
+							</article>
+						</div>
+					</div>
+
+				</div>
+			</section>
+
+			<!-- Contact -->
+			<section id="contact" class="four">
+				<div class="container">
+
+					<header>
+						<h2>Contact</h2>
+					</header>
+
+					<p align="left">
+						<!-- TODO: Fill in real contact names and emails -->
+						<strong>Contact Name 1:</strong> Daolin Li (Uni: dl3832) <a href="mailto:dl3832@columbia.edu">dl3832@columbia.edu</a><br/>
+                        <strong>Contact Name 2:</strong> Hao Chen (Uni: hc3625) <a href="mailto:hc3625@columbia.edu">hc3625@columbia.edu</a><br/>
+                        <strong>Contact Name 3:</strong> Sripad Karne (Uni: sk5695) <a href="mailto:sk5695@columbia.edu">sk5695@columbia.edu</a><br/>
+                        <strong>Contact Name 4:</strong> Yizheng Tang (Uni: yt2992) <a href="mailto:yt2992@columbia.edu">yt2992@columbia.edu</a><br/>
+                        <br>
+                        <strong>Other Contact Information:</strong>
+                        <a href="https://github.com/JarrettChen217/EECS-E4764-2025-Fall-Final-Project-vitalguard-ai" target="_blank">GitHub Repository</a>,
+                        <a href="https://api.vitalguardhealth.dev/" target="_blank">Project Website</a><br/>
+                        <br/>
+						<strong>Columbia University </strong>
+						<a href="http://www.ee.columbia.edu" target="_blank">Department of Electrical Engineering</a><br/>
+						<!-- <strong>Class Website:</strong>
+							<a href="https://edblogs.columbia.edu/eecs4764-001-2019-3/">Columbia University EECS E4764 Fall '22 IoT</a><br/> -->
+						<strong>Instructor:</strong>
+						<a href="https://www.engineering.columbia.edu/faculty-staff/directory/xiaofan-fred-jiang" target="_blank">
+							Professor Xiaofan (Fred) Jiang
+						</a>
+					</p>
+
+					<!-- Contact form is disabled for this static project website
+					<form method="post" action="#">
+						<div class="row">
+							<div class="6u 12u$(mobile)"><input type="text" name="name" placeholder="Name" /></div>
+							<div class="6u$ 12u$(mobile)"><input type="text" name="email" placeholder="Email" /></div>
+							<div class="12u$">
+								<textarea name="message" placeholder="Message"></textarea>
+							</div>
+							<div class="12u$">
+								<input type="submit" value="Send Message" />
+							</div>
+						</div>
+					</form>
+					-->
+
+				</div>
+			</section>
+
+		</div>
+
+		<!-- Footer -->
+		<div id="footer">
+
+			<!-- Copyright -->
+			<ul class="copyright">
+				<li>&copy; VitalGuard AI IoT Project | All rights reserved.</li>
+				<li>Design: <a href="http://html5up.net" target="_blank">HTML5 UP</a></li>
+			</ul>
+
+		</div>
 
 		<!-- Scripts -->
-			<script src="assets/js/jquery.min.js"></script>
-			<script src="assets/js/jquery.scrolly.min.js"></script>
-			<script src="assets/js/jquery.scrollzer.min.js"></script>
-			<script src="assets/js/skel.min.js"></script>
-			<script src="assets/js/util.js"></script>
-			<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
-			<script src="assets/js/main.js"></script>
+		<script src="assets/js/jquery.min.js"></script>
+		<script src="assets/js/jquery.scrolly.min.js"></script>
+		<script src="assets/js/jquery.scrollzer.min.js"></script>
+		<script src="assets/js/skel.min.js"></script>
+		<script src="assets/js/util.js"></script>
+		<!--[if lte IE 8]><script src="assets/js/ie/respond.min.js"></script><![endif]-->
+		<script src="assets/js/main.js"></script>
 
 	</body>
 </html>

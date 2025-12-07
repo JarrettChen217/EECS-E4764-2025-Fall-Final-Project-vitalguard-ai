@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import List
 
 import numpy as np
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 
 from vitalguard import (VitalSignsDataPoint, SharedDataStore,
                         DataValidator, VitalSignsAnalyzer,
@@ -39,6 +39,7 @@ SENSOR_LOCATION = "Wrist"
 # Static folder for Web UI
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 STATIC_DIR = os.path.join(BASE_DIR, "vitalguard", "web", "static")
+PROJECT_WEBSITE_DIR = os.path.join(BASE_DIR, "vitalguard", "web", "project_website")
 
 
 # ======================= FLASK SERVER =======================
@@ -57,9 +58,30 @@ def create_flask_app(data_store: SharedDataStore,
     app = Flask(__name__,
                 static_folder=STATIC_DIR,
                 static_url_path="/static")
+
+    # ======================= ROUTES =======================
     @app.route('/')
-    def home():
-        """Server status endpoint."""
+    def project_home():
+        """Serve project website index page."""
+        # index.html is under web/project_website
+        return send_from_directory(PROJECT_WEBSITE_DIR, 'index.html')
+
+    @app.route('/assets/<path:filename>')
+    def project_assets(filename):
+        """Serve assets for project website."""
+        assets_dir = os.path.join(PROJECT_WEBSITE_DIR, 'assets')
+        return send_from_directory(assets_dir, filename)
+
+    @app.route('/images/<path:filename>')
+    def project_images(filename):
+        """Serve images for project website."""
+        images_dir = os.path.join(PROJECT_WEBSITE_DIR, 'images')
+        return send_from_directory(images_dir, filename)
+
+
+    @app.route('/api/status/server', methods=['GET'])
+    def server_status():
+        """Server status endpoint (moved from '/')."""
         buffer_info = data_store.get_buffer_info()
         return jsonify({
             "status": "running",
@@ -67,11 +89,13 @@ def create_flask_app(data_store: SharedDataStore,
             "version": "2.0",
             "buffer_status": buffer_info,
             "endpoints": {
-                "/": "Server status",
+                "/": "Project website",
+                "/ui": "Live dashboard UI",
                 "/api/vitals": "Receive vital signs data (POST)",
                 "/api/buffer": "Check buffer status (GET)",
                 "/api/recent": "Get recent data (GET)",
-                "/health": "Health check for server (GET)"
+                "/health": "Health check for server (GET)",
+                "/api/status/server": "Server status JSON (GET)"
             }
         })
 

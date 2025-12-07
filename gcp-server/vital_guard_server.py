@@ -3,11 +3,8 @@
 # Function: Receive ESP32 multi-sensor data, process in real-time, LLM health analysis.
 
 import os
-import json
-import threading
 from datetime import datetime
-from collections import deque
-from typing import Optional, Deque, Dict, Any, List
+from typing import List
 
 import numpy as np
 from flask import Flask, request, jsonify

@@ -15,7 +15,7 @@ from vitalguard import (VitalSignsDataPoint, SharedDataStore,
 
 # ======================= CONFIGURATION =======================
 # --- LLM Configuration ---
-API_KEY = os.environ.get("OPENAI_API_KEY", "your-api-key-here")
+API_KEY = os.environ.get("OPENAI_API_KEY", "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")
 BASE_URL = None
 MODEL_NAME = "gpt-4o-mini"
 TEMPERATURE = 0.2

@@ -242,7 +242,9 @@ def create_flask_app(data_store: SharedDataStore,
                 "data": {
                     "ppg": {
                         "ir": recent_data['ir'].tolist(),
-                        "red": recent_data['red'].tolist()
+                        "red": recent_data['red'].tolist(),
+                        "heartrate": recent_data['heartrate'].tolist(),
+                        "spo2": recent_data['spo2'].tolist()
                     },
                     "temperature": recent_data['temperature'].tolist(),
                     "humidity": recent_data['humidity'].tolist(),

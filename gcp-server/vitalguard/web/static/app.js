@@ -1,4 +1,3 @@
-// Translation table
 const translations = {
   en: {
     static: {
@@ -7,9 +6,12 @@ const translations = {
       dataVisualizationTitle: 'Data Visualization',
       currentStatusTitle: 'Current Status',
       aiReportTitle: 'AI Report',
-      sensorIr: 'PPG · IR',
-      sensorRed: 'PPG · RED',
+      sensorHeartRate: 'Heart Rate',
+      sensorSpO2: 'SpO₂',
       sensorTemperature: 'Temperature',
+      sensorRed: 'PPG · RED',
+      sensorIr: 'PPG · IR',
+      tempUnitLabel: 'Temperature Unit',
       reportSummaryTitle: 'Report Summary',
       immediateAdviceTitle: 'Immediate Advice',
       trendAnalysisTitle: 'Trend Analysis',
@@ -55,9 +57,12 @@ const translations = {
       dataVisualizationTitle: '数据可视化',
       currentStatusTitle: '当前状态',
       aiReportTitle: 'AI 报告',
-      sensorIr: 'PPG · IR',
-      sensorRed: 'PPG · RED',
+      sensorHeartRate: '心率',
+      sensorSpO2: '血氧',
       sensorTemperature: '体温',
+      sensorRed: 'PPG · RED',
+      sensorIr: 'PPG · IR',
+      tempUnitLabel: '体温单位',
       reportSummaryTitle: '报告概要',
       immediateAdviceTitle: '即时建议',
       trendAnalysisTitle: '趋势分析',
@@ -99,7 +104,6 @@ const translations = {
   }
 };
 
-// Event bus (Observer pattern)
 class EventBus {
   constructor() { this.listeners = new Map(); }
   subscribe(event, handler) {
@@ -114,7 +118,6 @@ class EventBus {
 }
 const bus = new EventBus();
 
-// I18n service
 class I18nService {
   constructor(table) {
     this.table = table;
@@ -162,16 +165,13 @@ class I18nService {
 }
 const i18n = new I18nService(translations);
 
-// Data service with per-endpoint abort
 const DataService = (() => {
   const controllers = new Map();
-
   async function request(key, path, options = {}) {
     const previous = controllers.get(key);
     if (previous) previous.abort();
     const controller = new AbortController();
     controllers.set(key, controller);
-
     const config = { ...options, signal: controller.signal };
     try {
       const response = await fetch(path, config);
@@ -181,7 +181,6 @@ const DataService = (() => {
       if (controllers.get(key) === controller) controllers.delete(key);
     }
   }
-
   return {
     getHealth: () => request('health', '/health'),
     getRecent: () => request('recent', '/api/recent?limit=200'),
@@ -189,10 +188,8 @@ const DataService = (() => {
     postReport: () => request('report', '/api/report/manual', { method: 'POST' })
   };
 })();
-
 const isAbortError = (error) => error && error.name === 'AbortError';
 
-// Toast helper
 const Toast = (() => {
   const container = document.getElementById('toast-container');
   function show(message) {
@@ -206,19 +203,87 @@ const Toast = (() => {
   return { show };
 })();
 
-// Chart carousel block
+class TemperatureUnitToggle {
+  constructor() {
+    this.container = document.getElementById('temp-unit-toggle');
+    this.buttons = document.querySelectorAll('.unit-btn');
+    this.unit = localStorage.getItem('vg_temp_unit') || 'fahrenheit';
+  }
+  init() {
+    this.syncUI();
+    this.buttons.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const unit = btn.dataset.unit;
+        if (unit && unit !== this.unit) {
+          this.unit = unit;
+          localStorage.setItem('vg_temp_unit', unit);
+          this.syncUI();
+          bus.publish('temperatureUnitChanged', this.unit);
+        }
+      });
+    });
+    bus.publish('temperatureUnitChanged', this.unit);
+  }
+  syncUI() {
+    this.buttons.forEach((btn) => {
+      btn.classList.toggle('active', btn.dataset.unit === this.unit);
+    });
+  }
+  setActiveState(isActive) {
+    if (!this.container) return;
+    this.container.classList.toggle('active', isActive);
+  }
+  get currentUnit() {
+    return this.unit;
+  }
+}
+
 class ChartCarousel {
-  constructor(canvasId, buttonSelector) {
+  constructor(canvasId, buttonSelector, tempUnitToggle) {
     this.canvas = document.getElementById(canvasId);
     this.buttons = document.querySelectorAll(buttonSelector);
+    this.tempUnitToggle = tempUnitToggle;
     this.currentIndex = 0;
     this.lastPayload = null;
     this.realtimeStatusEl = document.getElementById('realtime-status');
     this.chart = null;
+    this.temperatureUnit = tempUnitToggle?.currentUnit || 'fahrenheit';
     this.sensors = [
-      { key: 'ppg_ir', labelKey: 'sensorIr', accessor: (d) => d.data.ppg?.ir || [] },
-      { key: 'ppg_red', labelKey: 'sensorRed', accessor: (d) => d.data.ppg?.red || [] },
-      { key: 'temperature', labelKey: 'sensorTemperature', accessor: (d) => d.data.temperature || [] }
+      {
+        key: 'heartrate',
+        labelKey: 'sensorHeartRate',
+        accessor: (d) => d.data.ppg?.heartrate || [],
+        color: '#fb7185',
+        background: 'rgba(251,113,133,0.2)'
+      },
+      {
+        key: 'spo2',
+        labelKey: 'sensorSpO2',
+        accessor: (d) => d.data.ppg?.spo2 || [],
+        color: '#22d3ee',
+        background: 'rgba(34,211,238,0.18)'
+      },
+      {
+        key: 'temperature',
+        labelKey: 'sensorTemperature',
+        accessor: (d) => d.data.temperature || [],
+        color: '#facc15',
+        background: 'rgba(250,204,21,0.25)'
+      },
+      {
+        key: 'ppg_red',
+        labelKey: 'sensorRed',
+        accessor: (d) => d.data.ppg?.red || [],
+        color: '#f87171',
+        background: 'rgba(248,113,113,0.18)'
+      },
+      {
+        key: 'ppg_ir',
+        labelKey: 'sensorIr',
+        accessor: (d) => d.data.ppg?.ir || [],
+        color: '#c084fc',
+        background: 'rgba(192,132,252,0.18)'
+      }
     ];
   }
   init() {
@@ -230,7 +295,17 @@ class ChartCarousel {
       options: {
         responsive: true,
         animation: false,
-        plugins: { legend: { display: false } },
+        interaction: { mode: 'index', intersect: false, axis: 'x' },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            intersect: false,
+            mode: 'index',
+            callbacks: {
+              label: (context) => this.formatTooltipValue(this.currentSensorKey(), context.parsed.y)
+            }
+          }
+        },
         scales: {
           x: { display: false },
           y: { ticks: { color: '#cbd5f5' } }
@@ -243,6 +318,10 @@ class ChartCarousel {
     this.bindButtons();
     bus.subscribe('recentData', (payload) => this.consume(payload));
     bus.subscribe('languageChanged', () => this.handleLanguageChange());
+    bus.subscribe('temperatureUnitChanged', (unit) => this.handleTemperatureUnitChange(unit));
+  }
+  currentSensorKey() {
+    return this.sensors[this.currentIndex]?.key;
   }
   bindButtons() {
     this.buttons.forEach((btn, idx) => {
@@ -254,26 +333,6 @@ class ChartCarousel {
       });
     });
   }
-  consume(payload) {
-    if (!payload || !this.chart) return;
-    this.lastPayload = payload;
-    const sensor = this.sensors[this.currentIndex];
-    const series = sensor.accessor(payload);
-    this.chart.data.labels = series.map((_, i) => i);
-    this.chart.data.datasets[0].data = series;
-    this.chart.data.datasets[0].borderColor = sensor.key === 'temperature' ? '#38bdf8' : '#f97316';
-    this.chart.data.datasets[0].backgroundColor = sensor.key === 'temperature'
-      ? 'rgba(56,189,248,0.2)'
-      : 'rgba(249,115,22,0.2)';
-    this.chart.data.datasets[0].label = i18n.t(sensor.labelKey);
-    this.chart.update();
-    if (this.realtimeStatusEl) {
-      this.realtimeStatusEl.textContent = i18n.dynamic('realtimeSamples', {
-        count: series.length,
-        time: new Date().toLocaleTimeString(i18n.locale)
-      });
-    }
-  }
   handleLanguageChange() {
     if (this.lastPayload) {
       this.consume(this.lastPayload);
@@ -281,9 +340,89 @@ class ChartCarousel {
       this.realtimeStatusEl.textContent = i18n.dynamic('realtimeLoading');
     }
   }
+  handleTemperatureUnitChange(unit) {
+    this.temperatureUnit = unit;
+    if (this.currentSensorKey() === 'temperature' && this.lastPayload) {
+      this.consume(this.lastPayload);
+    }
+  }
+  consume(payload) {
+    if (!payload || !this.chart) return;
+    this.lastPayload = payload;
+    const sensor = this.sensors[this.currentIndex];
+    if (!sensor) return;
+    const seriesResult = this.prepareSeries(sensor, payload);
+    const data = seriesResult.data || [];
+    this.chart.data.labels = data.map((_, i) => i);
+    this.chart.data.datasets[0].data = data;
+    this.chart.data.datasets[0].label = i18n.t(sensor.labelKey);
+    this.chart.data.datasets[0].borderColor = sensor.color;
+    this.chart.data.datasets[0].backgroundColor = sensor.background;
+    if (seriesResult.bounds) {
+      this.chart.options.scales.y.min = seriesResult.bounds.min;
+      this.chart.options.scales.y.max = seriesResult.bounds.max;
+    } else {
+      this.chart.options.scales.y.min = undefined;
+      this.chart.options.scales.y.max = undefined;
+    }
+    this.chart.options.plugins.tooltip.callbacks = {
+      label: (context) => this.formatTooltipValue(sensor.key, context.parsed.y)
+    };
+    this.chart.update();
+    if (this.realtimeStatusEl) {
+      this.realtimeStatusEl.textContent = i18n.dynamic('realtimeSamples', {
+        count: data.length,
+        time: new Date().toLocaleTimeString(i18n.locale)
+      });
+    }
+    this.tempUnitToggle?.setActiveState(sensor.key === 'temperature');
+  }
+  prepareSeries(sensor, payload) {
+    const raw = sensor.accessor(payload) || [];
+    if (sensor.key !== 'temperature') {
+      return { data: raw };
+    }
+    const converted = raw
+      .map((value) => {
+        if (typeof value !== 'number') return null;
+        return this.temperatureUnit === 'fahrenheit' ? ((value * 9) / 5) + 32 : value;
+      })
+      .filter((value) => typeof value === 'number' && Number.isFinite(value));
+    if (!converted.length) {
+      return { data: [] };
+    }
+    let min = Math.min(...converted);
+    let max = Math.max(...converted);
+    if (!Number.isFinite(min) || !Number.isFinite(max)) {
+      return { data: converted };
+    }
+    if (max - min < 10) {
+      const pad = (10 - (max - min)) / 2;
+      min -= pad;
+      max += pad;
+    }
+    return { data: converted, bounds: { min, max } };
+  }
+  formatTooltipValue(sensorKey, value) {
+    const label = this.chart?.data?.datasets[0]?.label || '';
+    if (value === null || value === undefined || Number.isNaN(value)) {
+      return label;
+    }
+    switch (sensorKey) {
+      case 'heartrate':
+        return `${label}: ${Math.round(value)} bpm`;
+      case 'spo2':
+        return `${label}: ${value.toFixed(1)}%`;
+      case 'temperature': {
+        const unitSymbol = this.temperatureUnit === 'fahrenheit' ? '°F' : '°C';
+        return `${label}: ${value.toFixed(1)} ${unitSymbol}`;
+      }
+      default:
+        return `${label}: ${value.toFixed(0)}`;
+    }
+  }
 }
 
-// Status block
 class StatusPanel {
   constructor() {
     this.infoEl = document.getElementById('status-info');
@@ -319,7 +458,6 @@ class StatusPanel {
   }
 }
 
-// Report block
 class ReportPanel {
   constructor() {
     this.button = document.getElementById('generate-report-btn');
@@ -400,7 +538,6 @@ class ReportPanel {
   }
 }
 
-// Data poller
 class DataPoller {
   constructor() {
     this.timers = [];
@@ -480,12 +617,15 @@ class DataPoller {
   }
 }
 
-// Bootstrap
 document.addEventListener('DOMContentLoaded', () => {
   i18n.init();
 
-  const carousel = new ChartCarousel('sensorChart', '.sensor-btn');
+  const temperatureUnitToggle = new TemperatureUnitToggle();
+  temperatureUnitToggle.init();
+
+  const carousel = new ChartCarousel('sensorChart', '.sensor-btn', temperatureUnitToggle);
   carousel.init();
+
   new StatusPanel();
   new ReportPanel();
 

@@ -90,9 +90,10 @@
       display: flex;
       gap: 8px;
       margin-bottom: 12px;
+      flex-wrap: wrap;
     }
     .sensor-btn {
-      flex: 1;
+      flex: 1 1 calc(50% - 4px);
       border: none;
       border-radius: 12px;
       padding: 8px;
@@ -104,6 +105,44 @@
     }
     .sensor-btn.active {
       background: linear-gradient(120deg, #fb923c, #f97316);
+      font-weight: 600;
+    }
+    .temp-unit-toggle {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      padding: 8px 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.05);
+      opacity: 0.45;
+      transition: opacity 0.2s ease;
+    }
+    .temp-unit-toggle.active {
+      opacity: 1;
+    }
+    .temp-unit-label {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+       font-weight: 500;
+    }
+    .temp-unit-switch {
+      display: flex;
+      gap: 6px;
+    }
+    .unit-btn {
+      border: none;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      background: rgba(255,255,255,0.08);
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .unit-btn.active {
+      background: linear-gradient(120deg, #facc15, #f97316);
+      color: #0f172a;
       font-weight: 600;
     }
     canvas {
@@ -208,11 +247,23 @@
         <div class="block-title" data-i18n="dataVisualizationTitle">Data Visualization</div>
         <span id="realtime-status" class="hero-status">Loading...</span>
       </div>
+
       <div class="sensor-carousel">
-        <button class="sensor-btn active" data-sensor="ppg_ir" data-i18n="sensorIr">PPG · IR</button>
-        <button class="sensor-btn" data-sensor="ppg_red" data-i18n="sensorRed">PPG · RED</button>
+        <button class="sensor-btn active" data-sensor="heartrate" data-i18n="sensorHeartRate">Heart Rate</button>
+        <button class="sensor-btn" data-sensor="spo2" data-i18n="sensorSpO2">SpO₂</button>
         <button class="sensor-btn" data-sensor="temperature" data-i18n="sensorTemperature">Temperature</button>
+        <button class="sensor-btn" data-sensor="ppg_red" data-i18n="sensorRed">PPG · RED</button>
+        <button class="sensor-btn" data-sensor="ppg_ir" data-i18n="sensorIr">PPG · IR</button>
       </div>
+
+      <div class="temp-unit-toggle" id="temp-unit-toggle">
+        <span class="temp-unit-label" data-i18n="tempUnitLabel">Temperature Unit</span>
+        <div class="temp-unit-switch">
+          <button class="unit-btn active" data-unit="fahrenheit">°F</button>
+          <button class="unit-btn" data-unit="celsius">°C</button>
+        </div>
+      </div>
+
       <canvas id="sensorChart"></canvas>
     </section>
 

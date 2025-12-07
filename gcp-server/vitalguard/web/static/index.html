@@ -1,204 +1,279 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>VitalGuard AI Dashboard</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
-  <!-- Chart.js for plotting -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
   <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: rgba(15, 23, 42, 0.75);
+      --accent: #f97316;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --blur: blur(18px);
+    }
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
       margin: 0;
-      padding: 0.75rem;
-      background: #f5f5f5;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1d4ed8, #0f172a 60%);
+      color: var(--text-main);
+      min-height: 100vh;
     }
-    header {
-      margin-bottom: 0.5rem;
+    .page {
+      max-width: 480px;
+      margin: 0 auto;
     }
-    h1 {
-      font-size: 1.3rem;
-      margin: 0 0 0.25rem 0;
+    .hero {
+      padding: 18px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.08);
+      backdrop-filter: var(--blur);
+      margin-bottom: 16px;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.25);
     }
-    #health-status {
-      font-size: 0.85rem;
-      color: #555;
-    }
-    /* Tabs */
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid #ddd;
-      margin-top: 0.5rem;
-    }
-    .tab-button {
-      flex: 1;
-      text-align: center;
-      padding: 0.4rem 0.2rem;
-      font-size: 0.9rem;
-      cursor: pointer;
-      border: none;
-      background: #eee;
-      color: #333;
-    }
-    .tab-button.active {
-      background: #fff;
-      border-bottom: 2px solid #007bff;
-      font-weight: 600;
-    }
-    .tab-content {
-      display: none;
-      margin-top: 0.5rem;
-    }
-    .tab-content.active {
-      display: block;
-    }
-    /* Cards */
-    .card {
-      background: #fff;
-      border-radius: 8px;
-      padding: 0.6rem;
-      margin-bottom: 0.5rem;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-    }
-    .card-title {
-      font-weight: 600;
-      margin-bottom: 0.4rem;
-      font-size: 0.95rem;
-    }
-    #realtime-status,
-    #status-info,
-    #report-status {
-      font-size: 0.8rem;
-      color: #666;
-      margin-bottom: 0.3rem;
-    }
-    canvas {
-      max-width: 100%;
-      height: 240px;
-    }
-    .status-row {
+    .hero-header {
       display: flex;
       justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+    .hero-title {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .hero-status {
       font-size: 0.9rem;
-      padding: 0.15rem 0;
+      color: var(--text-muted);
     }
-    .status-label {
-      color: #555;
+    .language-switch {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
     }
-    .status-value {
+    .language-switch label {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+    }
+    .language-switch select {
+      padding: 6px 10px;
+      border-radius: 12px;
+      border: none;
+      background: rgba(255,255,255,0.15);
+      color: var(--text-main);
+      font-size: 0.85rem;
+    }
+    .floating-block {
+      background: var(--card-bg);
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+      backdrop-filter: var(--blur);
+    }
+    .block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .block-title {
+      font-size: 1rem;
       font-weight: 600;
     }
-    button {
-      padding: 0.4rem 0.8rem;
-      font-size: 0.9rem;
-      border-radius: 4px;
-      border: 1px solid #007bff;
-      background: #007bff;
-      color: #fff;
+    .sensor-carousel {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .sensor-btn {
+      flex: 1;
+      border: none;
+      border-radius: 12px;
+      padding: 8px;
+      font-size: 0.85rem;
+      color: var(--text-main);
+      background: rgba(255,255,255,0.08);
       cursor: pointer;
+      transition: background 0.2s ease;
     }
-    button:disabled {
+    .sensor-btn.active {
+      background: linear-gradient(120deg, #fb923c, #f97316);
+      font-weight: 600;
+    }
+    canvas {
+      width: 100%;
+      height: 220px;
+    }
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 8px;
+    }
+    .status-chip {
+      padding: 10px;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.06);
+    }
+    .status-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .status-value {
+      font-size: 0.95rem;
+      font-weight: 600;
+    }
+    .report-btn {
+      width: 100%;
+      border: none;
+      border-radius: 16px;
+      padding: 12px;
+      font-size: 1rem;
+      background: linear-gradient(120deg, #22d3ee, #3b82f6);
+      color: #0f172a;
+      font-weight: 600;
+      cursor: pointer;
+      margin-bottom: 10px;
+    }
+    .report-btn:disabled {
       opacity: 0.6;
-      cursor: default;
+      cursor: not-allowed;
     }
-    ul {
-      padding-left: 1.1rem;
-      margin: 0.2rem 0;
-    }
-    li {
-      font-size: 0.88rem;
-      margin-bottom: 0.1rem;
+    .report-card {
+      margin-top: 12px;
+      padding: 12px;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.06);
+      display: none;
     }
     .badge {
-      display: inline-block;
-      padding: 0.1rem 0.4rem;
+      padding: 2px 10px;
       border-radius: 999px;
       font-size: 0.75rem;
+      margin-left: 6px;
       color: #fff;
-      margin-left: 0.3rem;
     }
-    .badge-low { background:#28a745; }
-    .badge-moderate { background:#ffc107; color:#333; }
-    .badge-high { background:#dc3545; }
+    .badge-low { background:#10b981; color:#022c22; }
+    .badge-moderate { background:#facc15; color:#422006; }
+    .badge-high { background:#f87171; color:#450a0a; }
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(90%, 360px);
+      z-index: 999;
+    }
+    .toast {
+      background: rgba(15, 23, 42, 0.92);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 14px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+      animation: fade-in 0.25s ease-out;
+    }
+    @keyframes fade-in {
+      from { opacity: 0; transform: translateY(12px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
   </style>
 </head>
 <body>
-<header>
-  <h1>VitalGuard AI</h1>
-  <div id="health-status">后端状态检查中...</div>
-</header>
+  <div class="page">
+    <section class="hero">
+      <div class="hero-header">
+        <div>
+          <div class="hero-title" data-i18n="appName">VitalGuard AI</div>
+          <div class="hero-status" id="health-status">Checking backend status...</div>
+        </div>
+        <div class="language-switch">
+          <label for="language-select" data-i18n="languageLabel">Language</label>
+          <select id="language-select">
+            <option value="en">English</option>
+            <option value="zh">中文</option>
+          </select>
+        </div>
+      </div>
+    </section>
 
-<!-- Tabs -->
-<div class="tabs">
-  <button class="tab-button active" data-tab="realtime">实时信号</button>
-  <button class="tab-button" data-tab="status">当前状态</button>
-  <button class="tab-button" data-tab="report">AI 报告</button>
-</div>
+    <section class="floating-block">
+      <div class="block-header">
+        <div class="block-title" data-i18n="dataVisualizationTitle">Data Visualization</div>
+        <span id="realtime-status" class="hero-status">Loading...</span>
+      </div>
+      <div class="sensor-carousel">
+        <button class="sensor-btn active" data-sensor="ppg_ir" data-i18n="sensorIr">PPG · IR</button>
+        <button class="sensor-btn" data-sensor="ppg_red" data-i18n="sensorRed">PPG · RED</button>
+        <button class="sensor-btn" data-sensor="temperature" data-i18n="sensorTemperature">Temperature</button>
+      </div>
+      <canvas id="sensorChart"></canvas>
+    </section>
 
-<!-- Tab: Realtime -->
-<div id="tab-realtime" class="tab-content active">
-  <div class="card">
-    <div class="card-title">PPG IR 信号</div>
-    <div id="realtime-status">加载数据中...</div>
-    <canvas id="ppgChart"></canvas>
+    <section class="floating-block">
+      <div class="block-header">
+        <div class="block-title" data-i18n="currentStatusTitle">Current Status</div>
+        <span id="status-info" class="hero-status">Awaiting latest analysis...</span>
+      </div>
+      <div class="status-grid">
+        <div class="status-chip">
+          <div class="status-label" data-i18n="hrLabel">Heart Rate Level</div>
+          <div class="status-value" id="hr-level">-</div>
+        </div>
+        <div class="status-chip">
+          <div class="status-label" data-i18n="activityLabel">Activity State</div>
+          <div class="status-value" id="activity-state">-</div>
+        </div>
+        <div class="status-chip">
+          <div class="status-label" data-i18n="sleepLabel">Sleep State</div>
+          <div class="status-value" id="sleep-state">-</div>
+        </div>
+        <div class="status-chip">
+          <div class="status-label" data-i18n="spo2Label">SpO₂ Status</div>
+          <div class="status-value" id="spo2-status">-</div>
+        </div>
+        <div class="status-chip" style="grid-column: span 2;">
+          <div class="status-label" data-i18n="tempLabel">Temperature Status</div>
+          <div class="status-value" id="temp-status">-</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="floating-block">
+      <div class="block-header">
+        <div class="block-title" data-i18n="aiReportTitle">AI Report</div>
+        <span class="hero-status" id="report-status">Tap the button to generate a report.</span>
+      </div>
+      <button id="generate-report-btn" class="report-btn" data-i18n="reportButton">Generate Latest Report</button>
+      <div class="report-card" id="report-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;">
+          <strong data-i18n="reportSummaryTitle">Report Summary</strong>
+          <span id="risk-badge"></span>
+        </div>
+        <p id="report-summary" style="margin:8px 0;"></p>
+        <div>
+          <strong data-i18n="immediateAdviceTitle">Immediate Advice</strong>
+          <ul id="report-immediate-advice" style="padding-left:20px;margin-top:4px;"></ul>
+        </div>
+        <div style="margin-top:8px;">
+          <strong data-i18n="trendAnalysisTitle">Trend Analysis</strong>
+          <div id="report-trend" style="font-size:0.9rem;margin-top:4px;"></div>
+        </div>
+        <div style="margin-top:8px;">
+          <strong data-i18n="notesTitle">Notes</strong>
+          <div id="report-notes" style="font-size:0.8rem;color:var(--text-muted);margin-top:4px;"></div>
+        </div>
+      </div>
+    </section>
   </div>
-</div>
 
-<!-- Tab: Status -->
-<div id="tab-status" class="tab-content">
-  <div class="card">
-    <div class="card-title">当前离散状态</div>
-    <div id="status-info">加载中...</div>
-    <div class="status-row">
-      <div class="status-label">心率等级</div>
-      <div class="status-value" id="hr-level">-</div>
-    </div>
-    <div class="status-row">
-      <div class="status-label">活动状态</div>
-      <div class="status-value" id="activity-state">-</div>
-    </div>
-    <div class="status-row">
-      <div class="status-label">睡眠状态</div>
-      <div class="status-value" id="sleep-state">-</div>
-    </div>
-    <div class="status-row">
-      <div class="status-label">体温状态</div>
-      <div class="status-value" id="temp-status">-</div>
-    </div>
-    <div class="status-row">
-      <div class="status-label">SpO₂ 状态</div>
-      <div class="status-value" id="spo2-status">-</div>
-    </div>
-  </div>
-</div>
-
-<!-- Tab: Report -->
-<div id="tab-report" class="tab-content">
-  <div class="card">
-    <div class="card-title">生成最近健康报告</div>
-    <div id="report-status">点击下方按钮生成最近一段时间的总结。</div>
-    <button id="generate-report-btn">生成最近报告</button>
-  </div>
-  <div class="card" id="report-card" style="display:none;">
-    <div class="card-title">
-      报告概要
-      <span id="risk-badge"></span>
-    </div>
-    <div id="report-summary" style="font-size:0.9rem; margin-bottom:0.4rem;"></div>
-    <div>
-      <strong>即时建议：</strong>
-      <ul id="report-immediate-advice"></ul>
-    </div>
-    <div style="margin-top:0.3rem;">
-      <strong>趋势分析：</strong>
-      <div id="report-trend" style="font-size:0.88rem; margin-top:0.1rem;"></div>
-    </div>
-    <div style="margin-top:0.3rem; font-size:0.8rem; color:#666;" id="report-notes"></div>
-  </div>
-</div>
-
-<script src="/static/app.js"></script>
+  <div id="toast-container"></div>
+  <script type="module" src="/static/app.js"></script>
 </body>
 </html>

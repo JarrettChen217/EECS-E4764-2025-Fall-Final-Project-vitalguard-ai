@@ -379,6 +379,22 @@ class ChartCarousel {
   }
   prepareSeries(sensor, payload) {
     const raw = sensor.accessor(payload) || [];
+
+    // Handle heart rate: set minimum y-axis to 30 bpm
+    if (sensor.key === 'heartrate') {
+      const data = raw.filter((value) => typeof value === 'number' && Number.isFinite(value));
+      if (!data.length) {
+        return { data: [], bounds: { min: 30, max: 120 } };
+      }
+      let min = Math.min(...data);
+      let max = Math.max(...data);
+      // Ensure minimum y-axis is at least 30 bpm
+      min = Math.min(min, 30);
+      // Ensure reasonable maximum (at least 120 or actual max)
+      max = Math.max(max, 120);
+      return { data, bounds: { min, max } };
+    }
+
     if (sensor.key !== 'temperature') {
       return { data: raw };
     }

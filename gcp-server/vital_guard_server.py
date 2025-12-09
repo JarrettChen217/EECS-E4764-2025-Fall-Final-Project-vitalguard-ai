@@ -3,8 +3,12 @@
 # Function: Receive ESP32 multi-sensor data, process in real-time, LLM health analysis.
 
 import os
+import threading
 from datetime import datetime
 from typing import List
+
+from data_running_for_test import send_running_batches
+from data_sick_for_test import send_sick_batches
 
 import numpy as np
 from flask import Flask, request, jsonify, send_from_directory
@@ -12,6 +16,14 @@ from flask import Flask, request, jsonify, send_from_directory
 from vitalguard import (VitalSignsDataPoint, SharedDataStore,
                         DataValidator, VitalSignsAnalyzer,
                         HealthReportService, OpenAI_LLM)
+
+# ======================= CONFIGURATION =======================
+# --- Test Data Mode ---
+# Set TEST_MODE environment variable to choose test data type:
+# - "running": simulate running/exercise scenario (default)
+# - "sick": simulate sick person with fever
+# - "none": disable test data injection
+TEST_MODE = "running"
 
 # ======================= CONFIGURATION =======================
 # --- LLM Configuration ---
@@ -351,6 +363,8 @@ def create_flask_app(data_store: SharedDataStore,
 
     return app
 
+# Global instance to store the analyzer (for test data injection)
+analyzer_instance = None
 
 # ======================= MAIN APPLICATION =======================
 def initialize_application():
@@ -358,6 +372,8 @@ def initialize_application():
     Initialize the application (data store and Flask app).
     This function is called both in development mode and by Gunicorn.
     """
+    global analyzer_instance
+
     print("=" * 70)
     print("  🩺 VitalGuard AI - Health Monitoring System")
     print("  📡 Real-time Vital Signs Processing Server")
@@ -379,6 +395,7 @@ def initialize_application():
         window_points=WINDOW_POINTS,
         history_size=200
     )
+    analyzer_instance = analyzer
     # Initialize LLM interface.
     print("🔧 Initializing LLM interface...")
     llm_client = OpenAI_LLM(
@@ -420,11 +437,45 @@ def main():
     """
     Development mode entry point.
     Used when running: python main.py
+
+    Environment variables:
+    - TEST_MODE: "running" (default), "sick", or "none"
     """
     print(f"\n🚀 Starting server on {FLASK_HOST}:{FLASK_PORT}...")
     print(f"🔗 Send POST requests to: http://{FLASK_HOST}:{FLASK_PORT}/api/vitals")
     print(f"🔗 Access Web UI at: http://{FLASK_HOST}:{FLASK_PORT}/ui")
+    print(f"🧪 Test mode: {TEST_MODE.upper()}")
     print("\nPress Ctrl+C to stop the server\n")
+
+    # Start test data sender in a separate daemon thread based on TEST_MODE
+    if analyzer_instance is not None and TEST_MODE != "none":
+        if TEST_MODE == "sick":
+            test_func = send_sick_batches
+            test_name = "SickDataSender"
+            print("🧪 Starting SICK person test data sender in background thread...")
+            print("   → High fever (38.5-39.5°C)")
+            print("   → Elevated heart rate (~110 bpm)")
+            print("   → Low SpO2 (94-96%)")
+            print("   → Resting state (minimal activity)")
+        elif TEST_MODE == "running":  # default to "running"
+            test_func = send_running_batches
+            test_name = "RunningDataSender"
+            print("🧪 Starting RUNNING exercise test data sender in background thread...")
+            print("   → Heart rate: 80→160 bpm")
+            print("   → Normal temperature")
+            print("   → Active movement")
+
+        test_thread = threading.Thread(
+            target=test_func,
+            args=(analyzer_instance,),
+            daemon=True,
+            name=test_name
+        )
+        test_thread.start()
+        print(f"✅ {test_name} started successfully\n")
+    elif TEST_MODE == "none":
+        print("ℹ️  Test data injection disabled (TEST_MODE=none)\n")
+
     try:
         # Use Flask built-in server for development
         app.run(host=FLASK_HOST, port=FLASK_PORT, debug=False, threaded=True)

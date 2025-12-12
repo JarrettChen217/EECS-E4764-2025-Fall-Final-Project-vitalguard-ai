@@ -225,12 +225,13 @@
 						</li>
 
 						<li><b>AI / LLM Layer.</b>
-							A third-party LLM is integrated via API. It periodically pulls processed summaries and
-							generates:
+							Cloud-based LLM services consume processed summaries and event flags from the backend to provide higher-level reasoning. They support:
 							<ul>
 								<li>Easy-to-understand health reports.</li>
 								<li>Personalized lifestyle and habit recommendations.</li>
 								<li>Context-aware explanations when anomalies are detected.</li>
+								<li>Conversational query support for users asking about vitals or historical patterns.</li>
+								<li>Privacy-preserving processing by sending only derived features, not raw biometric data.</li>
 							</ul>
 						</li>
 
@@ -310,6 +311,8 @@
 						<li>Third-party LLM accessed via API.</li>
 						<li>Prompting with structured trends, statistics, and events rather than raw signals.</li>
 						<li>Generation of human-friendly reports and explanations.</li>
+						<li>Context-aware reasoning that combines vitals, motion, and historical baselines to improve anomaly interpretation.</li>
+                        <li>LLM outputs integrated back into the dashboard and alerting pipeline for real-time guidance.</li>
 					</ul>
 
 					<p align="left"><b>Frontend &amp; User Experience.</b></p>
@@ -399,14 +402,28 @@
 
 					<!-- TODO: Replace with real result figures/plots/screenshots -->
 					<article class="item">
-						<a href="#" class="image fit">
-							<img src="images/pic_results_placeholder.jpg" alt="Example VitalGuard AI results visualization" />
-						</a>
-						<header>
-							<h3>Example: Real-time heart rate and activity trend visualization</h3>
-						</header>
-					</article>
 
+                        <div style="display: flex; gap: 20px; align-items: flex-start;">
+
+        <!-- 左边：running_ui -->
+                            <div style="flex: 1; text-align: center;">
+                                <a href="#" class="image fit">
+                                    <img src="images/running_ui.gif" alt="Example VitalGuard AI results visualization">
+                                </a>
+                                <h4 style="margin-top: 10px;">Real-time Heart Rate & Activity Trend</h4>
+                            </div>
+
+        <!-- 右边：sick_ui_msgpush -->
+                            <div style="flex: 1; text-align: center;">
+                                <a href="#" class="image fit">
+                                    <img src="images/sick_ui_msgpush.gif" alt="Sick UI Message Push Demo">
+                                </a>
+                                <h4 style="margin-top: 10px;">Health Status Alert Message Push</h4>
+                            </div>
+
+                        </div>
+
+                    
 				</div>
 			</section>
 
@@ -472,7 +489,7 @@
 								<!-- TODO: Replace with Team Member 3 photo -->
 								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 1" /></a>
 								<header>
-									<h3>Team Member 4</h3>
+									<h3>Team Member 3</h3>
 									<p>Sripad Karne / sk5695 – Machine Learning &amp; Data digging</p>
 								</header>
 							</article>
@@ -480,7 +497,7 @@
 						<div class="4u$ 12u$(mobile)">
 							<article class="item">
 								<!-- TODO: Replace with Team Member 4 photo -->
-								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 3" /></a>
+								<a href="#" class="image fit"><img src="images/pic_Daolin.jpg" alt="Team member 3" /></a>
 								<header>
 									<h3>Team Member 4</h3>
 									<p>Daolin Li / dl3832 – AI integration</p>

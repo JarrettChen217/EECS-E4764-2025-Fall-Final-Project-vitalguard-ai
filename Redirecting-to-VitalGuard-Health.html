@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Redirecting to VitalGuard Health...</title>
+    <!-- Fallback: Redirect after 3 seconds if JavaScript is disabled -->
+    <meta http-equiv="refresh" content="3;url=https://api.vitalguardhealth.dev/">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+    <p>Redirecting you to the VitalGuard Health website...</p>
+    <p>If you are not redirected automatically, please click the link below:</p>
+    <p>
+        <a href="https://api.vitalguardhealth.dev/" target="_blank">
+            Open VitalGuard Health API Website
+        </a>
+    </p>
+
+    <script>
+        (function () {
+            const targetUrl = "https://api.vitalguardhealth.dev/";
+            try {
+                // Use replace() to avoid adding this page to browser history
+                if (window.location && typeof window.location.replace === "function") {
+                    window.location.replace(targetUrl);
+                } else {
+                    window.location.href = targetUrl;
+                }
+            } catch (error) {
+                console.error("Redirect failed:", error);
+            }
+        })();
+    </script>
+
+    <noscript>
+        <p>JavaScript is disabled. You will be redirected in a few seconds.</p>
+    </noscript>
+</body>
+</html>

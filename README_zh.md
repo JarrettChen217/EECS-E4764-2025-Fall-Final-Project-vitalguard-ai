@@ -35,11 +35,40 @@
 
 ```
 .
-├── esp32/          # ESP32 (MicroPython) 代码
-├── gcp-server/     # GCP Flask 后端服务代码
-├── docs/           # 项目文档
-├── .gitignore      # Git 忽略文件配置
-└── README.md       # 项目说明
+├── `esp32/`                   # ESP32 (MicroPython) code and sensor tests
+│   ├── `esp32_main.py`
+│   ├── `main.py`
+│   └── `sensor_test_codes/`
+│       ├── `force.py`
+│       ├── `heartrate.py`
+│       ├── `heartrate_parse.py`
+│       ├── `temp_humidity.py`
+│       └── ...
+├── `gcp-server/`              # Backend Flask service + utils + web UI
+│   ├── `main.py`              # optional local run helper
+│   ├── `vital_guard_server.py`# Flask app module (exposes `app`)
+│   ├── `requirements.txt`
+│   ├── `simple_api_tester.py`
+│   ├── `test_llm.py`
+│   ├── `vital_signs_data.jsonl`
+│   ├── `vitalguard/`         # Python package used by the server
+│   │   ├── `__init__.py`
+│   │   ├── `config.py`
+│   │   ├── `llm_interface.py`
+│   │   ├── `llm_service.py`
+│   │   ├── `ml_analyzer.py`
+│   │   ├── `models.py`
+│   │   ├── `storage.py`
+│   │   └── `validation.py`
+│   └── `web/`
+│       ├── `project_website/` # !!**static team website**!!
+│       └── `static/`          # lightweight frontend assets used by deployment
+├── `docs/`                    # design docs, datasheets, diagrams
+│   ├── `Block_Diagram.png`
+│   ├── `HDC1080.pdf`
+│   └── ...
+├── `README.md`
+└── `README_zh.md`
 ```
 
 ## 🏁 开始使用 (Getting Started)

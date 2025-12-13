@@ -34,14 +34,51 @@ In the fields of chronic disease management and elderly care, continuous and low
 
 ## 📂 Project Structure
 
+Root layout (only key files/folders shown):
 ```
 .
-├── esp32/          # ESP32 (MicroPython) code
-├── gcp-server/     # GCP Flask backend service code
-├── docs/           # Project documentation
-├── .gitignore      # Git ignore configuration
-└── README.md       # Project overview
+├── `esp32/`                   # ESP32 (MicroPython) code and sensor tests
+│   ├── `esp32_main.py`
+│   ├── `main.py`
+│   └── `sensor_test_codes/`
+│       ├── `force.py`
+│       ├── `heartrate.py`
+│       ├── `heartrate_parse.py`
+│       ├── `temp_humidity.py`
+│       └── ...
+├── `gcp-server/`              # Backend Flask service + utils + web UI
+│   ├── `main.py`              # optional local run helper
+│   ├── `vital_guard_server.py`# Flask app module (exposes `app`)
+│   ├── `requirements.txt`
+│   ├── `simple_api_tester.py`
+│   ├── `test_llm.py`
+│   ├── `vital_signs_data.jsonl`
+│   ├── `vitalguard/`         # Python package used by the server
+│   │   ├── `__init__.py`
+│   │   ├── `config.py`
+│   │   ├── `llm_interface.py`
+│   │   ├── `llm_service.py`
+│   │   ├── `ml_analyzer.py`
+│   │   ├── `models.py`
+│   │   ├── `storage.py`
+│   │   └── `validation.py`
+│   └── `web/`
+│       ├── `project_website/` # !!**static team website**!!
+│       └── `static/`          # lightweight frontend assets used by deployment
+├── `docs/`                    # design docs, datasheets, diagrams
+│   ├── `Block_Diagram.png`
+│   ├── `HDC1080.pdf`
+│   └── ...
+├── `README.md`
+└── `README_zh.md`
 ```
+Notes:
+- Backend entrypoint for production gunicorn is `vital_guard_server:app` (module:flask_app_object).
+- Keep `gcp-server/requirements.txt` up to date; install inside a virtualenv (example: `/home/<user>/esp32_env`).
+- When deploying with systemd/gunicorn, update `User`, `WorkingDirectory`, and the `PATH` to match your environment.
+- ESP32: `esp32/` contains both the main firmware script and helpers under `sensor_test_codes/`. Use `mpfshell`, `ampy`, or `rshell` to upload files depending on preference.
+- Tests and sample data live under `gcp-server/` (`test_llm.py`, `simple_api_tester.py`, `vital_signs_data.jsonl`) — useful for CI and local verification.
+
 
 ## 🏁 Getting Started
 

@@ -126,6 +126,7 @@
 
 					<p align="left">
 						<b>Relevance.</b> Our goal is to enable out-of-clinic monitoring for:
+						
 					</p>
 					<ul align="left">
 						<li>Chronic disease management (e.g., cardiovascular conditions).</li>
@@ -134,8 +135,7 @@
 					</ul>
 
 					<p align="left">
-						<b>Social value.</b> By continuously tracking multi-modal signals, VitalGuard AI can:
-					</p>
+						<b>Social value.</b> By continuously tracking multi-modal signals, VitalGuard AI can:					
 					<ul align="left">
 						<li>Detect anomalies earlier, enabling timely medical attention.</li>
 						<li>Provide peace of mind for families and caregivers through automatic alerts.</li>
@@ -159,7 +159,23 @@
 						<li>Wellness wearables and personal health tracking.</li>
 						<li>Campus safety and corporate wellness programs.</li>
 					</ul>
+					<div style="display: flex; gap: 20px; justify-content: center;">
+    
+                    <a href="#" class="image fit">
+                         <div class="img-box">
+                         <img src="images/case1.jpg" alt="Case 1" />
+                          </div>
+                    </a>
 
+                    <a href="#" class="image fit">
+                         <div class="img-box">
+                         <img src="images/case_senior_citizen.jpg" alt="Case 3" />
+                         </div>
+                         </a>
+
+                    </div>
+
+                    
 					<!-- TODO: Optionally insert a figure or photo illustrating use cases -->
 					<!-- Example:
 					<a href="#" class="image fit"><img src="images/motivation_use_cases.jpg" alt="VitalGuard AI use cases" /></a>
@@ -189,6 +205,8 @@
 						AI insights &rarr; user feedback loop:
 					</p>
 
+                    <a href="#" class="image fit"><img src="images/block_diagram.png" alt="VitalGuard AI block diagram" /></a>
+					</p>
 					<ul align="left">
 						<li><b>Hardware / Sensing Layer.</b>
 							A compact wearable integrates multiple sensors:
@@ -197,6 +215,12 @@
 								<li>TMP117 for high-accuracy body/skin temperature (±0.1&nbsp;°C, I²C).</li>
 								<li>ADXL345 3-axis accelerometer for motion, posture, and fall detection.</li>
 								<li>FSR402 force sensor for pressure/force-based contact and activity cues.</li>
+								<a href="#" class="image fit"
+                                  style="display: flex; justify-content: center; align-items: center;">
+                                  <img src="images/circuit_diagram.jpg"
+                                  alt="VitalGuard AI block diagram"
+                                  style="max-width: 350px; height: auto;" />
+                            </a>
 							</ul>
 							These sensors are interfaced with an ESP32 microcontroller.
 						</li>
@@ -251,7 +275,7 @@
 						</li>
 					</ul>
 
-					<a href="#" class="image fit"><img src="images/block_diagram.png" alt="VitalGuard AI block diagram" /></a>
+					
 
 					<h3 align="left">Key Features</h3>
 
@@ -286,6 +310,13 @@
 						<li>Wi‑Fi: high-speed cloud connectivity.</li>
 						<li>Bluetooth: short-range, low-energy link for local streaming or configuration.</li>
 					</ul>
+						 <a href="#" class="image fit">
+                         <div class="img-box">
+                         <img src="images/connection.jpg" alt="Case 3" />
+                         </div>
+                         </a>
+				    </p>
+					
 
 					<p align="left"><b>Embedded / Edge Software.</b></p>
 					<ul align="left">
@@ -341,19 +372,34 @@
 						form factor (e.g., wristband or armband). The device is powered by a battery pack and streams
 						data over Wi‑Fi to the GCP backend.
 					</p>
-
+                    <a href="#" class="image">
+                      <img src="images/prototype_hardware1.jpg"
+                        alt="VitalGuard AI hardware prototype"
+                        style="max-width: 350px; height: auto;" />
+                    </a>
+					<a href="#" class="image">
+                      <img src="images/prototype_hardware2.jpg"
+                        alt="VitalGuard AI hardware prototype"
+                        style="max-width: 350px; height: auto;" />
+                    </a>
+					<a href="#" class="image">
+                      <img src="images/prototype_hardware3.jpg"
+                        alt="VitalGuard AI hardware prototype"
+                        style="max-width: 350px; height: auto;" />
+                    </a>
 					<p align="left">
 						The web dashboard shows real-time heart rate, SpO₂, temperature, and activity indicators,
 						along with AI-generated textual summaries. Fall events or critical vital anomalies are clearly
 						highlighted as alerts in the UI.
 					</p>
+					<a href="#" class="image">
+                      <img src="images/dashboard.jpg"
+                        alt="VitalGuard AI hardware prototype"
+                        style="max-width: 350px; height: auto;" />
+                    </a>
 
-					<!-- TODO: Replace these placeholder images with photos of your hardware prototype and dashboard -->
-					<!--
-					<a href="#" class="image fit"><img src="images/prototype_hardware.jpg" alt="VitalGuard AI hardware prototype" /></a>
-					<a href="#" class="image fit"><img src="images/prototype_dashboard.jpg" alt="VitalGuard AI web dashboard" /></a>
-					-->
 
+	
 				</div>
 			</section>
 
@@ -466,8 +512,7 @@
 					<div class="row">
 						<div class="4u 12u$(mobile)">
 							<article class="item">
-								<!-- TODO: Replace with Team Member 1 photo -->
-								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 1" /></a>
+								<a href="#" class="image fit"><img src="images/yt2992.jpg" alt="Team member 1" /></a>
 								<header>
 									<h3>Team Member 1</h3>
 									<p>Yizheng Tang / yt2992 – Embedded systems &amp; firmware</p>
@@ -477,7 +522,7 @@
 						<div class="4u 12u$(mobile)">
 							<article class="item">
 								<!-- TODO: Replace with Team Member 2 photo -->
-								<a href="#" class="image fit"><img src="images/pic_Haochen.jpg" alt="Team member 2" /></a>
+								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 2" /></a>
 								<header>
 									<h3>Team Member 2</h3>
 									<p>Hao Chen / hc3625 – Cloud backend frontend &amp; data pipeline</p>
@@ -487,7 +532,7 @@
                         <div class="4u 12u$(mobile)">
 							<article class="item">
 								<!-- TODO: Replace with Team Member 3 photo -->
-								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 3" /></a>
+								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 1" /></a>
 								<header>
 									<h3>Team Member 3</h3>
 									<p>Sripad Karne / sk5695 – Machine Learning &amp; Data digging</p>
@@ -497,7 +542,7 @@
 						<div class="4u$ 12u$(mobile)">
 							<article class="item">
 								<!-- TODO: Replace with Team Member 4 photo -->
-								<a href="#" class="image fit"><img src="images/pic_Daolin.jpg" alt="Team member 4" /></a>
+								<a href="#" class="image fit"><img src="images/pic_Daolin.jpg" alt="Team member 3" /></a>
 								<header>
 									<h3>Team Member 4</h3>
 									<p>Daolin Li / dl3832 – AI integration</p>

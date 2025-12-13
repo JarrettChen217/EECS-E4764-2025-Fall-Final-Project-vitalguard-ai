@@ -248,7 +248,36 @@
 							Processed data and events are stored for visualization and further analysis.
 						</li>
 
+
+                        <li><b>Machine Learning–LLM Interface.</b>
+                             The interface connects numerical analysis with language-based reasoning.
+                            <ul>
+                              <li>
+                                  Traditional machine learning and signal-processing methods analyze time-series
+                                  sensor data to extract trends and detect anomalies.
+                              </li>
+                              <li>
+                                  Detected events and statistical summaries are generated from raw sensor signals,
+                                  such as abnormal vitals or potential fall events.
+                             </li>
+                              <li>
+                                  The structured outputs from the ML stage are passed to the LLM as inputs.
+                              </li>
+                              <li>
+                                  The LLM generates human-readable health reports, explanations, and personalized
+                                  recommendations for users and caregivers.
+                             </li>
+                            </ul>
+                        </li>
+
+
 						<li><b>AI / LLM Layer.</b>
+                            <p align="left">
+                                 In VitalGuard AI, the LLM does not replace traditional machine learning models; instead,
+                                 it augments them by providing contextual reasoning and natural-language interpretation.
+                                 The LLM acts as a semantic layer that connects low-level physiological patterns identified
+                                 by ML with user-facing insights and explanations.
+                             </p>
 							Cloud-based LLM services consume processed summaries and event flags from the backend to provide higher-level reasoning. They support:
 							<ul>
 								<li>Easy-to-understand health reports.</li>
@@ -445,6 +474,11 @@
 							receiving an alert notification.
 						</li>
 					</ul>
+                        <p align="left">
+                         Several demonstrations highlight the interaction between ML-based detection and LLM-based
+                         explanation, showing how detected anomalies are transformed into human-readable health
+                         reports and actionable recommendations.
+                        </p>
 
 					<!-- TODO: Replace with real result figures/plots/screenshots -->
 					<article class="item">
@@ -471,6 +505,14 @@
 
                     
 				</div>
+
+                 <br><br>
+				<p align="left">
+                Future work includes exploring more advanced LLM-based reasoning, where the model could
+                support alert escalation decisions, such as determining when it is necessary to notify
+                emergency contacts, while keeping final control within predefined safety rules.
+                </p>
+                  
 			</section>
 
 			<!-- References -->
@@ -522,7 +564,7 @@
 						<div class="4u 12u$(mobile)">
 							<article class="item">
 								<!-- TODO: Replace with Team Member 2 photo -->
-								<a href="#" class="image fit"><img src="images/pic_Haochen.jpg" alt="Team member 2" /></a>
+								<a href="#" class="image fit"><img src="images/pic07.jpg" alt="Team member 2" /></a>
 								<header>
 									<h3>Team Member 2</h3>
 									<p>Hao Chen / hc3625 – Cloud backend frontend &amp; data pipeline</p>

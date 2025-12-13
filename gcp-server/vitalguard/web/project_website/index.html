@@ -301,6 +301,67 @@
 						        machine-level outputs into intuitive, actionable insights.
 						    </p>
 						</li>
+						<svg width="700" height="320" viewBox="0 0 700 320" xmlns="http://www.w3.org/2000/svg">
+						  <style>
+						    .box {
+						      fill: #f8f9fa;
+						      stroke: #333;
+						      stroke-width: 1.2;
+						      rx: 6;
+						      ry: 6;
+						    }
+						    .text {
+						      font-family: Arial, sans-serif;
+						      font-size: 13px;
+						      fill: #000;
+						      text-anchor: middle;
+						    }
+						    .arrow {
+						      stroke: #333;
+						      stroke-width: 1.5;
+						      marker-end: url(#arrowhead);
+						    }
+						  </style>
+						
+						  <defs>
+						    <marker id="arrowhead" markerWidth="10" markerHeight="7"
+						            refX="10" refY="3.5" orient="auto">
+						      <polygon points="0 0, 10 3.5, 0 7" fill="#333" />
+						    </marker>
+						  </defs>
+						
+						  <!-- Boxes -->
+						  <rect class="box" x="20"  y="40" width="200" height="50"/>
+						  <rect class="box" x="250" y="40" width="200" height="50"/>
+						  <rect class="box" x="480" y="40" width="200" height="50"/>
+						
+						  <rect class="box" x="135" y="130" width="200" height="50"/>
+						  <rect class="box" x="365" y="130" width="200" height="50"/>
+						
+						  <!-- Text -->
+						  <text class="text" x="120" y="70">Raw Sensor Data</text>
+						  <text class="text" x="120" y="86">(HR, SpO₂, Temp, Motion)</text>
+						
+						  <text class="text" x="350" y="70">ML Feature Extraction</text>
+						  <text class="text" x="350" y="86">(Windowing, Statistics)</text>
+						
+						  <text class="text" x="580" y="70">ML Classification</text>
+						  <text class="text" x="580" y="86">(Health States & Flags)</text>
+						
+						  <text class="text" x="235" y="160">Structured ML Output</text>
+						  <text class="text" x="235" y="176">(Labels, Trends)</text>
+						
+						  <text class="text" x="465" y="160">LLM Reasoning Layer</text>
+						  <text class="text" x="465" y="176">(Explanation & Advice)</text>
+						
+						  <!-- Arrows -->
+						  <line class="arrow" x1="220" y1="65" x2="250" y2="65"/>
+						  <line class="arrow" x1="450" y1="65" x2="480" y2="65"/>
+						  <line class="arrow" x1="580" y1="90" x2="335" y2="130"/>
+						  <line class="arrow" x1="335" y1="155" x2="365" y2="155"/>
+						
+						</svg>
+
 
 
 						<li><b>AI / LLM Layer.</b>

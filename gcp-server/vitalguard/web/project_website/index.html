@@ -248,27 +248,59 @@
 							Processed data and events are stored for visualization and further analysis.
 						</li>
 
-
-                        <li><b>Machine Learning–LLM Interface.</b>
-                             The interface connects numerical analysis with language-based reasoning.
-                            <ul>
-                              <li>
-                                  Traditional machine learning and signal-processing methods analyze time-series
-                                  sensor data to extract trends and detect anomalies.
-                              </li>
-                              <li>
-                                  Detected events and statistical summaries are generated from raw sensor signals,
-                                  such as abnormal vitals or potential fall events.
-                             </li>
-                              <li>
-                                  The structured outputs from the ML stage are passed to the LLM as inputs.
-                              </li>
-                              <li>
-                                  The LLM generates human-readable health reports, explanations, and personalized
-                                  recommendations for users and caregivers.
-                             </li>
-                            </ul>
-                        </li>
+						<li><b>Machine Learning–LLM Interface.</b>
+						    <p align="left">
+						        The Machine Learning–LLM interface forms the bridge between low-level physiological
+						        signal processing and high-level, human-readable health insights. Traditional
+						        machine learning and signal-processing techniques are used to transform raw,
+						        multi-sensor time-series data into structured and interpretable health states,
+						        which are then passed to a large language model (LLM) for contextual reasoning
+						        and explanation.
+						    </p>
+						
+						    <ul>
+						        <li>
+						            <b>ML-based feature extraction.</b>
+						            Incoming sensor streams are segmented into sliding time windows, where
+						            lightweight statistical and signal-derived features are computed, such as
+						            mean heart rate and SpO₂, temperature trends, and accelerometer-based activity
+						            metrics.
+						        </li>
+						
+						        <li>
+						            <b>Discrete health state classification.</b>
+						            Extracted features are mapped to interpretable health categories using
+						            rule-based and lightweight ML classifiers. Examples include heart rate
+						            levels (low, normal, high), activity states (resting to vigorous activity),
+						            temperature status (normal to elevated), and SpO₂ status (normal to low).
+						            Simple heuristics also combine multiple signals to infer higher-level states
+						            such as potential rest or sleep periods.
+						        </li>
+						
+						        <li>
+						            <b>Structured ML outputs.</b>
+						            Rather than sending raw biometric time series to the LLM, only structured
+						            outputs are forwarded, including discrete state labels, aggregated statistics,
+						            and detected event flags (e.g., abnormal vitals or possible fall events).
+						            This reduces noise, preserves privacy, and ensures that the LLM operates on
+						            clinically meaningful abstractions.
+						        </li>
+						
+						        <li>
+						            <b>LLM-based reasoning and explanation.</b>
+						            The LLM consumes the structured ML outputs and recent historical context to
+						            generate natural-language health reports, contextual explanations, and
+						            personalized lifestyle recommendations for users and caregivers.
+						        </li>
+						    </ul>
+						
+						    <p align="left">
+						        In this hybrid design, the LLM does not replace ML-based detection or safety logic.
+						        All critical anomaly detection and alert triggers remain governed by deterministic
+						        rules or lightweight classifiers, while the LLM augments the system by translating
+						        machine-level outputs into intuitive, actionable insights.
+						    </p>
+						</li>
 
 
 						<li><b>AI / LLM Layer.</b>
